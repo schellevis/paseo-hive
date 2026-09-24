@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "word_limits": {"quick": 250, "standard": 250, "deep": 400, "select": 120},
+  "tolerance": 0.25,
+  "formats": {
+    "critique-r1": {"limit": "mode", "fields": [
+      {"name": "POSITION", "kind": "line"},
+      {"name": "CLAIMS", "kind": "items", "id": "C", "min": 3, "sequential": true, "max": 5, "sentences": 2,
+       "tags": [{"key": null, "values": ["certain", "likely", "guess"]}]},
+      {"name": "WEAKEST ASSUMPTION", "kind": "line"},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "critique-followup": {"limit": "mode", "fields": [
+      {"name": "ATTACKS", "kind": "refs"},
+      {"name": "CONCESSIONS", "kind": "refs"},
+      {"name": "POSITION", "kind": "choice", "values": ["changed", "unchanged"]},
+      {"name": "BECAUSE", "kind": "line", "refs": true},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "brainstorm-r1": {"limit": "mode", "fields": [
+      {"name": "OBVIOUS", "kind": "block"},
+      {"name": "IDEAS", "kind": "items", "id": "I", "min": 4, "sequential": true, "max": 6, "sentences": 2,
+       "tags": [{"key": "novelty", "values": ["low", "mid", "high"]},
+                {"key": "effort", "values": ["low", "mid", "high"]}]},
+      {"name": "WILDCARD", "kind": "line", "ledger_id": "WILDCARD"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "brainstorm-followup": {"limit": "mode", "fields": [
+      {"name": "BUILDS", "kind": "items", "id": "N", "min": 2, "sequential": true, "max": 4, "sentences": 2,
+       "tags": [{"key": "builds on", "refs": true},
+                {"key": "novelty", "values": ["low", "mid", "high"]},
+                {"key": "effort", "values": ["low", "mid", "high"]}]},
+      {"name": "NEW", "kind": "line", "ledger_id": "NEW"},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "decide-r1": {"limit": "mode", "fields": [
+      {"name": "CRITERIA", "kind": "line"},
+      {"name": "OPTIONS", "kind": "items", "id": "O", "min": 1, "max": null,
+       "sequential": false, "new": true},
+      {"name": "RANKING", "kind": "line"},
+      {"name": "WHAT WOULD FLIP IT", "kind": "line"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "decide-followup": {"limit": "mode", "fields": [
+      {"name": "CHALLENGES", "kind": "refs"},
+      {"name": "CONCESSIONS", "kind": "refs"},
+      {"name": "RANKING", "kind": "choice", "values": ["changed", "unchanged"]},
+      {"name": "BECAUSE", "kind": "line", "refs": true},
+      {"name": "WHAT WOULD FLIP IT", "kind": "line"},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "explore-r1": {"limit": "mode", "fields": [
+      {"name": "MAP", "kind": "items", "id": "Q", "min": 4, "sequential": true, "max": 6},
+      {"name": "KNOWN", "kind": "block"},
+      {"name": "UNKNOWN", "kind": "block"},
+      {"name": "BEST NEXT QUESTION", "kind": "line"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "explore-followup": {"limit": "mode", "fields": [
+      {"name": "GAPS", "kind": "block"},
+      {"name": "CHALLENGES", "kind": "refs"},
+      {"name": "ADDITIONS", "kind": "items", "id": "Q", "min": 0, "max": null, "sequential": false},
+      {"name": "BEST NEXT QUESTION", "kind": "choice", "values": ["changed", "unchanged"]},
+      {"name": "BECAUSE", "kind": "line", "refs": true},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "select": {"limit": "select", "fields": [
+      {"name": "SHORTLIST", "kind": "block", "refs": true},
+      {"name": "WILDCARD KEEP", "kind": "line", "refs": true},
+      {"name": "DROP", "kind": "block", "refs": true}
+    ]},
+    "fairness": {"kind": "fairness", "limit": null}
+  }
+}
