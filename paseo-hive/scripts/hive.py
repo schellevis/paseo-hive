@@ -875,6 +875,66 @@ def cmd_leaks(args) -> int:
     return EXIT_ACTION if hits else EXIT_OK
 
 
+# --- lint ---------------------------------------------------------------------
+
+HEADINGS = ("Opening round", "Follow-up rounds", "Ledger", "Saturation signals",
+            "Minimum engagement", "Typical user questions")
+VERBATIM = (
+    "Preserve diversity: disagreement in critique and decide, divergence in brainstorm "
+    "and explore. Never converge prematurely.",
+    "Stop when another round cannot settle anything.",
+    "Skill files and panel prompts are in English.",
+)
+
+
+def lint(root: Path) -> list[str]:
+    """The AGENTS.md "Checks before committing", as a list of failures."""
+    root = Path(root)
+    skill_dir = root / "paseo-hive"
+    skill = read_text(skill_dir / "SKILL.md")
+    prompts = read_text(skill_dir / "references" / "prompts.md")
+    goals = read_text(skill_dir / "references" / "goals.md")
+    agents = read_text(root / "AGENTS.md")
+    formats = load_formats(skill_dir / "references" / "formats.json")
+    fails = []
+    n = len(skill.splitlines())
+    if n > 200:
+        fails.append(f"SKILL.md has {n} lines (max 200)")
+    for link in re.findall(r"\]\((references/[^)#]+)", skill):
+        if not (skill_dir / link).exists():
+            fails.append(f"SKILL.md links to missing {link}")
+    status = sum(1 for l in prompts.splitlines() if l.startswith("STATUS: continue | nothing new"))
+    if status != 4:
+        fails.append(f"prompts.md has {status} STATUS lines (want 4)")
+    for h in HEADINGS:
+        count = sum(1 for l in goals.splitlines() if l.startswith(f"### {h}"))
+        if count != 4:
+            fails.append(f"goals.md has {count} '### {h}' headings (want 4)")
+    fails += format_drift(prompts, formats)
+    rule = next((l for l in agents.splitlines() if "Keep field names and IDs identical" in l), "")
+    all_fields = {f["name"] for fm in formats["formats"].values() for f in fm.get("fields", [])}
+    for name in re.findall(r"`([^`{}]+)`", rule):
+        if name not in prompts:
+            fails.append(f"field {name} missing from prompts.md")
+        if name not in all_fields:
+            fails.append(f"field {name} missing from formats.json")
+    for sentence in VERBATIM:
+        if sentence not in skill:
+            fails.append(f"SKILL.md lost the verbatim sentence: {sentence}")
+    return fails
+
+
+def _setup_lint(p) -> None:
+    p.add_argument("root", nargs="?", default=str(SKILL_DIR.parent), help="repository root")
+
+
+def cmd_lint(args) -> int:
+    fails = lint(Path(args.root))
+    emit(args, {"status": "invalid" if fails else "ok",
+                "line": "\n".join(fails) if fails else "ok: lint passed", "failures": fails})
+    return EXIT_ACTION if fails else EXIT_OK
+
+
 # --- CLI ----------------------------------------------------------------------
 
 COMMANDS: dict = {
@@ -882,6 +942,7 @@ COMMANDS: dict = {
     "ingest": (_setup_ingest, cmd_ingest),
     "ledger": (_setup_ledger, cmd_ledger),
     "leaks": (_setup_leaks, cmd_leaks),
+    "lint": (_setup_lint, cmd_lint),
 }
 
 
