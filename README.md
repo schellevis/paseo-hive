@@ -1,0 +1,20 @@
+# paseo-hive
+
+A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different models toward one of four goals: **critique** a claim, plan, text, or piece of code; **brainstorm** ideas; **decide** between options; or **explore** a problem space. Seats analyse independently, cross-examine each other anonymously, and occasionally put a sharp counter-question back to you. Instead of a single final report, the panel pauses at a **checkpoint**: your feedback — new information, a focus, a disagreement, even a goal switch — starts the next leg with the same live panel. It does not produce a manufactured consensus.
+
+## How it works
+
+- an independent opening round, where seats never see each other's work;
+- anonymous follow-up rounds, where seats attack, build on, challenge, or probe each other's contributions;
+- counter-questions, asked only when your answer can move something;
+- a checkpoint that shows where the panel stands and what is still open;
+- your feedback starts the next leg — same panel, possibly a new goal.
+
+```text
+/paseo-hive Small open-source projects should reject AI-generated pull requests by default.
+/paseo-hive --goal brainstorm How could a public library attract more teenagers?
+/paseo-hive --goal decide --quick SQLite or Postgres for a single-user desktop app?
+/paseo-hive --goal explore --deep What would we need to know before moving a team to a four-day week?
+```
+
+Status: early draft.

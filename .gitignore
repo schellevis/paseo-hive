@@ -1,0 +1,4 @@
+.paseo-hive/
+*.log
+.paseo-autopilot/
+docs/
