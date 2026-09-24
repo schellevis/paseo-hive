@@ -33,7 +33,7 @@ README.md                            public description and example invocations
 ## Editing rules
 
 - **English only** in skill files and prompt templates. The skill talks to users in their own language at runtime; the files stay English. Trigger phrases in other languages in the `description` are allowed.
-- **Keep field names and IDs identical across files.** When you touch one, grep the others: `POSITION`, `CLAIMS`, `CRUX`, `STATUS`, `QUESTION FOR THE USER`, `OBVIOUS`, `WILDCARD`, `BUILDS`, `SHORTLIST`, `RANKING`, `MAP`, `BEST NEXT QUESTION`, `{IDEA_LEDGER}`.
+- **Keep field names and IDs identical across files.** When you touch one, grep the others: `POSITION`, `CLAIMS`, `CRUX`, `STATUS`, `BECAUSE`, `QUESTION FOR THE USER`, `OBVIOUS`, `WILDCARD`, `BUILDS`, `SHORTLIST`, `RANKING`, `MAP`, `BEST NEXT QUESTION`, `{IDEA_LEDGER}`.
 - **ID scheme** (defined once in `goals.md`): seats number their own items unprefixed (`C1`, `I1`, `N1`, `Q1`); the ledger prefixes them with the seat letter (`A-C1`, `B-I2`); decide options are shared (`O1`, …) and a seat's `NEW` option gets the next `O` number; explore areas are merged as `M1`, …; user items are `U1`, … .
 - **Verbatim sentences** that other text relies on: the core rule (principle 3), the stop principle (principle 5), and the language rule in `SKILL.md`. Change them deliberately, everywhere at once.
 - `SKILL.md` stays short and links to references; details and templates live only in `references/`.

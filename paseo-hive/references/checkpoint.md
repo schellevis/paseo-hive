@@ -16,7 +16,11 @@ Goal: <goal> · Mode: <mode> · Seats: <n> · Leg: <n> · Rounds this leg: <n>
 <goal-specific sections>
 
 ## What changed this leg
-<position/ranking changes with the argument that caused them; flag changes without a new argument>
+| round | seat | from → to | moved by | kind | why, in one sentence |
+|---|---|---|---|---|---|
+<one row per entry in changes.md; mark rows of kind "no new argument" with ⚠>
+
+Held despite challenge: <one line per seat that did not move: the strongest challenge and why it failed, per the seat>
 
 ## Questions for you
 <open questions only the user can answer>
@@ -35,7 +39,7 @@ Below the checkpoint, **only in the message to the user and never in `checkpoint
 </details>
 ```
 
-In everything the user reads (checkpoint message, counter-questions, progress updates), call seats by their model name instead of their letter, for example "Sonnet 5 argues…" rather than "A argues…"; cite items the same way ("Sonnet 5's C1" instead of `A-C1`). Only when two seats run the same model, add the letter: "Sonnet 5 (A)". Letters remain the only names in anything seats read.
+In everything the user reads (checkpoint message, counter-questions, progress updates), call seats by their model name instead of their letter, for example "Sonnet 5 argues…" rather than "A argues…"; cite items the same way ("Sonnet 5's C1" instead of `A-C1`), also in the "What changed" table. Only when two seats run the same model, add the letter: "Sonnet 5 (A)". Letters remain the only names in anything seats read.
 
 Also write `transcript.md` for the user: every round's raw seat output in order, with each heading showing the seat letter, role or lens, and provider/model. Tell the user where it is. Never give its path to a seat.
 

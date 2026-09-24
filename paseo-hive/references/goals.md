@@ -82,6 +82,17 @@ Every area in the merged map was covered by at least two seats.
 ### Typical user questions
 What the user already knows; what they want to be able to decide afterwards.
 
+## Change log
+
+After every follow-up round, the moderator adds one line to `leg-<n>/changes.md` for each change of POSITION, RANKING, or BEST NEXT QUESTION: round, seat, from → to, moved by (the prefixed item ID and its seat, or a `U…` item), kind, and the reason in one sentence taken from the seat's `BECAUSE`. Kinds:
+
+- `argument`: another seat's reasoning or new consideration.
+- `correction`: another seat showed that the changing seat's own earlier output contained a factual or logical error.
+- `user`: a user answer or `U…` item.
+- `no new argument`: `BECAUSE` names no item, or the named item does not say what the seat claims. The moderator checks the cited item; this kind is a warning sign of drift toward the majority and is flagged in the checkpoint.
+
+Also log **holds**: a seat whose top choice or position was challenged in the round and did not move, with the strongest challenge it resisted and why it says that challenge failed. Concessions that change no position or ranking stay in the ledger only. A challenge made in the same round the leg would end has not yet reached the challenged seat, so the seat's silence on it is not a hold: if the cap allows, give that seat one targeted round to answer it before the checkpoint.
+
 ## Universal checks
 
 Before presenting a checkpoint, run the goal's minimum-engagement check above plus two universal checks: every crux is resolved or has a "what would settle it"; every user answer and user item (`U…`) was addressed by at least one seat. If a check fails and the round cap allows another round, run one **targeted** extra round: only the seats and items that failed (for example "Seat B: nobody attacked A-C2; attack it"). If the cap is reached, present the checkpoint marked `Debate incomplete: <which check failed>`.

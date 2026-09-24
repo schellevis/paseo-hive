@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
 metadata:
-  version: "0.2.2"
+  version: "0.2.3"
   compatibility: "Requires Paseo agent tools (or the paseo CLI) and at least two usable provider/model pairs."
 ---
 
@@ -47,7 +47,7 @@ FRAME -> PANEL -> OPENING ROUND -> LEDGER -> [QUESTION] -> FOLLOW-UP ROUND -> LE
 1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous.
 2. **PANEL.** Read [panel.md](references/panel.md). Pick seats per the mode and goal, maximising model-family diversity. Announce the panel (with the goal) in a compact table, then launch without waiting for approval unless the user asked to approve panels.
 3. **OPENING ROUND.** Read [prompts.md](references/prompts.md). Launch all seats in parallel with the round-1 prompt for the goal. Seats never see each other's output in this round. Independent only in the first leg and after a goal switch.
-4. **LEDGER.** Save each seat's output to the session directory under an anonymous letter. Merge into the goal's ledger (goals.md), prefixing every item with its seat letter.
+4. **LEDGER.** Save each seat's output to the session directory under an anonymous letter. Merge into the goal's ledger (goals.md), prefixing every item with its seat letter. After follow-up rounds, also update the change log (goals.md): who moved, moved by which item, and why.
 5. **QUESTION** (gate, see below). Ask at most two questions, then resume.
 6. **FOLLOW-UP ROUND.** Reuse each seat's agent through `send_agent_prompt`; never start a new agent for a later round. Give every seat the anonymised ledger, the paths of the other seats' output, any user items, and its targets (goals.md). Repeat rounds up to the cap (user's choice, 1–10).
 7. **Ending a round.** A round ends when every seat has delivered its turn. A seat that errors or shows no new activity for 10 minutes is skipped for that round; record the skip in the ledger and the checkpoint. A seat skipped twice in one session is replaced (catch-up prompt) or dropped, and the user is told which.
@@ -78,7 +78,7 @@ Pause for the user only when their answer can move a crux. Each question must na
 Keep the user informed, also with `--auto`: running on its own means no pauses, not silence. Toward the user, use model names; keep each update to a few lines and build it from the ledger, not from raw seat output.
 
 - **While a round runs:** a one-line note when a seat finishes (`2 of 4 in`), and at once when a seat stalls, is skipped, or is replaced.
-- **After each round:** round `n` of the cap; per seat one line on what moved (conceded, changed position, new idea or option, attack on whom); the live cruxes; and the moderator's call (another round, and why, or checkpoint next).
+- **After each round:** round `n` of the cap; per seat one line on what moved (conceded, changed position and moved by which seat's argument, new idea or option, attack on whom); the live cruxes; and the moderator's call (another round, and why, or checkpoint next).
 - Never tell the user only what you are about to check or poll; report what the panel did.
 
 ## Moderator neutrality
@@ -119,6 +119,7 @@ Default: `${XDG_STATE_HOME:-$HOME/.local/state}/paseo-hive/<YYYYMMDD-HHMM>-<slug
 brief.md                 subject, goal, mode, panel (seat -> role or lens, provider/model, thinking level)
 leg-1/round-1/A.md ...   raw seat output
 leg-1/ledger-1.md        ledger after round 1
+leg-1/changes.md         change log: who moved, moved by which item, why
 leg-1/questions.md       mid-leg questions and answers
 leg-1/round-2/A.md ...
 leg-1/select/A.md ...    brainstorm only

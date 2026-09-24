@@ -109,7 +109,7 @@ ATTACKS:
 CONCESSIONS:
 <claim id>: <what you now accept, or "none">
 POSITION: changed | unchanged — <one sentence: your position now>
-BECAUSE: <which argument changed your mind, or why none did>
+BECAUSE: <changed: the item id that moved you, and what it showed that you had missed or got wrong | unchanged: the strongest challenge to you and why it did not hold>
 CRUX: <the single point the debate now hinges on>
 STATUS: continue | nothing new
 QUESTION FOR THE USER: <or "none">
@@ -133,7 +133,7 @@ CHALLENGES:
 CONCESSIONS:
 <item>: <what you now accept, or "none">
 RANKING: changed | unchanged — <your ranking now>
-BECAUSE: <which argument moved you, or why none did>
+BECAUSE: <changed: the item id that moved you, and what it showed that you had missed or got wrong | unchanged: the strongest challenge to you and why it did not hold>
 WHAT WOULD FLIP IT: <updated>
 STATUS: continue | nothing new
 QUESTION FOR THE USER: <or "none">
@@ -147,6 +147,7 @@ CHALLENGES:
 ADDITIONS:
 Q<n> <new question or area>: <why it matters>
 BEST NEXT QUESTION: changed | unchanged — <question>
+BECAUSE: <changed: the item id that moved you, and what it showed | unchanged: "none">
 STATUS: continue | nothing new
 QUESTION FOR THE USER: <or "none">
 ```
