@@ -2,6 +2,8 @@
 
 **ID scheme.** Seats number their own items without a prefix (`C1`, `I1`, `N1`, `Q1`). The moderator stores every item in the ledger with the seat letter as prefix (`A-C1`, `B-I2`, `C-N1`, `A-Q3`), and those prefixed IDs are what targets, attacks, builds, challenges, and checkpoints cite. Exceptions: decide options are shared and numbered once by the moderator from the subject (`O1`, `O2`, …); an option a seat adds is written `NEW <option>` and the moderator gives it the next `O` number in the ledger. Explore: the moderator merges the seats' maps into areas numbered `M1`, `M2`, … with the contributing seat IDs listed per area; follow-up targets and challenges cite `M` IDs, and additions a seat makes in a follow-up are numbered by the seat (`Q7`) and prefixed in the ledger (`B-Q7`). User items are `U1`, `U2`, … .
 
+**Ledger files.** `hive.py ledger` writes the Items part of `leg-<n>/ledger-<r>.md`: prefixed IDs, `O` numbers for `NEW` options, and dangling-reference warnings. Ledger IDs are unique per session: when a seat reuses a local number already taken in an earlier round or leg (builds restart at `N1` each round), the ledger gives it the next free number for that seat and letter (`WILDCARD` and `NEW` get a suffix: `B-NEW2`), and seats cite the ledger ID. Rebuilding a round keeps the IDs and `O` numbers it had before. The moderator writes the Moderator part (clusters, cruxes, `M` areas, skips, saturation notes); regenerating the Items part keeps it as it is.
+
 ## critique
 
 ### Opening round

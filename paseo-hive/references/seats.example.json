@@ -1,0 +1,13 @@
+{
+  "session": "20260101-0900-example",
+  "goal": "critique",
+  "mode": "standard",
+  "seats": [
+    {"letter": "A", "role": "Skeptic", "provider": "<provider id>", "model": "<model id>",
+     "label": "<model name as shown to the user>", "agent": "<agent id>", "thinking": "<thinking option id>"},
+    {"letter": "B", "role": "Alternative", "provider": "<provider id>", "model": "<model id>",
+     "label": "<model name as shown to the user>", "agent": "<agent id>", "thinking": "<thinking option id>"},
+    {"letter": "C", "role": "Advocate", "provider": "<provider id>", "model": "<model id>",
+     "label": "<model name as shown to the user>", "agent": "<agent id>", "thinking": "<thinking option id>"}
+  ]
+}

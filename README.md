@@ -20,4 +20,8 @@ At the start you are asked whether you want to give input along the way, and you
 /paseo-hive --auto --rounds 5 Should a neighbourhood association own its community garden or lease it?
 ```
 
+## Requirements
+
+Paseo with at least two usable provider/model pairs (preferably from different model families), and Python 3.10+ for the helper script in `paseo-hive/scripts/` (standard library only, nothing to install).
+
 Status: early draft.

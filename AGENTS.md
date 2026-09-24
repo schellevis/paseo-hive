@@ -4,9 +4,9 @@ Guidance for AI agents and humans working on this repository.
 
 ## What this is
 
-`paseo-hive` is a Markdown-only [Paseo](https://paseo.sh) skill. A moderator agent runs a small panel (3–5 seats) of agents on different model families toward one of four goals: `critique`, `brainstorm`, `decide`, `explore`. Seats work independently first, then react to each other anonymously. The moderator asks the user counter-questions only when an answer can move a crux, and pauses at checkpoints where user feedback starts the next leg with the same live panel.
+`paseo-hive` is a [Paseo](https://paseo.sh) skill. A moderator agent runs a small panel (3–5 seats) of agents on different model families toward one of four goals: `critique`, `brainstorm`, `decide`, `explore`. Seats work independently first, then react to each other anonymously. The moderator asks the user counter-questions only when an answer can move a crux, and pauses at checkpoints where user feedback starts the next leg with the same live panel.
 
-There is no code, build, or test suite. The deliverable is instruction text that other agents follow, so precision and internal consistency are the quality bar.
+The deliverable is mostly instruction text that other agents follow, so precision and internal consistency are the quality bar. A small standard-library Python tool (`paseo-hive/scripts/hive.py`, Python 3.10+) does the moderator's mechanical steps and checks formats; its tests live in `tests/`.
 
 ## Layout
 
@@ -16,6 +16,10 @@ paseo-hive/references/goals.md       ID scheme; per-goal rounds, ledger, saturat
 paseo-hive/references/panel.md       roles, brainstorm lenses, per-goal seat rules, model assignment
 paseo-hive/references/prompts.md     every prompt template seats receive
 paseo-hive/references/checkpoint.md  checkpoint report template per goal
+paseo-hive/references/formats.json  machine-readable seat answer formats (must match prompts.md)
+paseo-hive/references/seats.example.json  example of the per-session seats.json
+paseo-hive/scripts/hive.py           ingest, check, ledger, leaks, lint (standard library only)
+tests/                               unittest suite with synthetic fixtures (public: keep them generic)
 README.md                            public description and example invocations
 ```
 
@@ -26,7 +30,7 @@ README.md                            public description and example invocations
 1. **Independence before exposure.** The opening round of a leg is blind; seats see each other's work only in follow-up rounds.
 2. **Model diversity over persona count.** Three seats on three model families beat five seats on one. With one family available, the checkpoint says "Limited diversity".
 3. **Preserve diversity.** "Preserve diversity: disagreement in critique and decide, divergence in brainstorm and explore. Never converge prematurely." No manufactured consensus.
-4. **Neutral, anonymising moderator.** Seats see letters (A, B, C), never roles or models. The seat-to-model mapping lives only in the session's `brief.md`, the user-only `transcript.md`, and messages to the user, never in `checkpoint-<n>.md` (new seats read that file).
+4. **Neutral, anonymising moderator.** Seats see letters (A, B, C), never roles or models. The seat-to-model mapping lives only in the session's `brief.md` and `seats.json`, the user-only `transcript.md`, and messages to the user, never in `checkpoint-<n>.md` (new seats read that file).
 5. **Moderator-judged ending.** "Stop when another round cannot settle anything." Saturation signals, `STATUS: continue | nothing new` lines, and minimum-engagement checks guide the judgement; a round cap the user picks (1–10, suggested per mode) forces a checkpoint.
 6. **Token discipline.** One agent per seat for the whole session (later rounds via `send_agent_prompt`), strict word limits, IDs instead of quotes, files instead of copying text through the moderator, lowest thinking level for select and fairness prompts, early stopping.
 
@@ -34,6 +38,7 @@ README.md                            public description and example invocations
 
 - **English only** in skill files and prompt templates. The skill talks to users in their own language at runtime; the files stay English. Trigger phrases in other languages in the `description` are allowed.
 - **Keep field names and IDs identical across files.** When you touch one, grep the others: `POSITION`, `CLAIMS`, `CRUX`, `STATUS`, `BECAUSE`, `QUESTION FOR THE USER`, `OBVIOUS`, `WILDCARD`, `BUILDS`, `SHORTLIST`, `RANKING`, `MAP`, `BEST NEXT QUESTION`, `{IDEA_LEDGER}`.
+- **Formats live twice.** A change to an answer format in `prompts.md` needs the same change in `references/formats.json`; `hive.py lint` fails otherwise.
 - **ID scheme** (defined once in `goals.md`): seats number their own items unprefixed (`C1`, `I1`, `N1`, `Q1`); the ledger prefixes them with the seat letter (`A-C1`, `B-I2`); decide options are shared (`O1`, …) and a seat's `NEW` option gets the next `O` number; explore areas are merged as `M1`, …; user items are `U1`, … .
 - **Verbatim sentences** that other text relies on: the core rule (principle 3), the stop principle (principle 5), and the language rule in `SKILL.md`. Change them deliberately, everywhere at once.
 - `SKILL.md` stays short and links to references; details and templates live only in `references/`.
@@ -45,24 +50,22 @@ README.md                            public description and example invocations
 - No installation-specific details: no local paths, account or organisation IDs, numbered or custom provider-entry names, quota figures, or usage numbers.
 - Examples must be generic and span domains (software, product, community or public sector, research, personal decisions).
 - Commit with the repo-local neutral identity (`paseo-hive contributors <noreply@example.invalid>`); check `git config user.email` before committing.
-- Before every push, grep tracked files for email-like strings and for any name or identifier from your own environment:
+- Before every push, scan tracked files for email-like strings, local paths, and any name or identifier from your own environment:
 
 ```bash
-git grep -nE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}' -- ':!LICENSE' ':!AGENTS.md'
-git grep -niE '/home/|/Users/|/workspace/' -- ':!AGENTS.md'
+python3 paseo-hive/scripts/hive.py leaks --repo
 ```
+
+- List names or identifiers from your own environment, one per line, in an untracked `.opsec-extra` file at the repo root; `leaks --repo` flags them in tracked files too. Test fixtures are public: keep them synthetic.
 
 ## Checks before committing
 
-There is no test suite; run these and read the diff:
+Run these and read the diff:
 
 ```bash
-wc -l paseo-hive/SKILL.md                                    # ≤ 200
-grep -o '](references/[^)]*)' paseo-hive/SKILL.md            # every linked file must exist
-grep -c '^STATUS: continue | nothing new' paseo-hive/references/prompts.md   # 4 (one per follow-up format)
-for h in 'Opening round' 'Follow-up rounds' 'Ledger' 'Saturation signals' 'Minimum engagement' 'Typical user questions'; do
-  printf '%s: ' "$h"; grep -c "^### $h" paseo-hive/references/goals.md   # 4 each
-done
+python3 paseo-hive/scripts/hive.py lint
+python3 paseo-hive/scripts/hive.py leaks --repo
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 ```
 
 For larger changes, have a reviewer on a different model family read the diff against the principles above; same-family review misses the same things.

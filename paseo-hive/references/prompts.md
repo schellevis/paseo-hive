@@ -210,3 +210,10 @@ Deep mode, lowest thinking level. It runs on the checkpoint draft before it is s
 Below is the moderator's draft summary of your contribution. Reply in one line: "fair" or "unfair: <what is misrepresented>".
 {DRAFT_SUMMARY_OF_THIS_SEAT}
 ```
+
+## Trim prompt
+
+Sent once when `hive.py ingest` reports `trim`:
+```text
+Your answer has {N} words; the limit is {L}. Resend the same answer in at most {L} words: same format, same IDs, same positions. Do not use any tools or skills.
+```
