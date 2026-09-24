@@ -781,12 +781,107 @@ def cmd_ledger(args) -> int:
     return EXIT_ACTION if dangling else EXIT_OK
 
 
+# --- leaks --------------------------------------------------------------------
+
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}")
+LOCAL_PATH_RE = re.compile(r"/(?:home|Users|workspace)/")
+SEAT_VISIBLE = ("checkpoint-*.md", "leg-*/ledger-*.md", "leg-*/round-*/*.md", "leg-*/select/*.md")
+REPO_SKIP = {"LICENSE", "AGENTS.md"}
+
+
+def session_patterns(seats: dict) -> list[tuple[str, re.Pattern]]:
+    """Model, label and provider names (any case), role names (exact case)."""
+    pats, seen = [], set()
+    for seat in seats.get("seats", []):
+        for key in ("model", "label", "provider"):
+            value = seat.get(key)
+            if value and value.lower() not in seen:
+                seen.add(value.lower())
+                pats.append((value, re.compile(rf"(?<![\w-]){re.escape(value)}(?![\w-])", re.IGNORECASE)))
+        role = seat.get("role")
+        if role and role not in seen:
+            seen.add(role)
+            pats.append((role, re.compile(rf"(?<!\w){re.escape(role)}(?!\w)")))
+    return pats
+
+
+def _scan(path: Path, pats, label: str, skip_binary: bool = False) -> list[str]:
+    """Hits in one file. Unreadable text is an error, never a clean result."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        if skip_binary:
+            return []
+        raise HiveError(f"{label}: not UTF-8 text; cannot scan it") from None
+    except OSError as e:
+        raise HiveError(f"{label}: {e.strerror or e}") from e
+    return [f"{label}:{n}: {name}"
+            for n, line in enumerate(text.splitlines(), 1)
+            for name, pat in pats if pat.search(line)]
+
+
+def leaks_session(session: Path, files: list[Path] | None = None) -> list[str]:
+    session = Path(session)
+    seats = load_json(session / "seats.json")
+    validate_seats(seats, session / "seats.json")
+    pats = session_patterns(seats)
+    if not files:
+        files = sorted({p for g in SEAT_VISIBLE for p in session.glob(g)})
+    hits = []
+    for f in files:
+        label = str(f.relative_to(session)) if f.is_relative_to(session) else str(f)
+        hits += _scan(f, pats, label)
+    return hits
+
+
+def leaks_repo(root: Path) -> list[str]:
+    root = Path(root)
+    try:
+        proc = subprocess.run(["git", "-C", str(root), "ls-files", "-z"],
+                              capture_output=True, check=False)
+    except FileNotFoundError:
+        raise HiveError("git not found") from None
+    if proc.returncode != 0:
+        raise HiveError(f"{root}: not a git checkout")
+    pats = [("email", EMAIL_RE), ("local path", LOCAL_PATH_RE)]
+    extra = root / ".opsec-extra"
+    if extra.exists():
+        for term in read_text(extra).splitlines():
+            term = term.strip()
+            if term and not term.startswith("#"):
+                pats.append((term, re.compile(re.escape(term), re.IGNORECASE)))
+    hits = []
+    for rel in proc.stdout.decode("utf-8").split("\0"):
+        if rel and rel not in REPO_SKIP:
+            hits += _scan(root / rel, pats, rel, skip_binary=True)
+    return hits
+
+
+def _setup_leaks(p) -> None:
+    mode = p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--session", help="session directory with seats.json")
+    mode.add_argument("--repo", nargs="?", const=".", metavar="ROOT",
+                      help="scan tracked files of a git checkout")
+    p.add_argument("files", nargs="*", help="session mode: files to scan instead of the defaults")
+
+
+def cmd_leaks(args) -> int:
+    if args.repo:
+        hits = leaks_repo(Path(args.repo))
+    else:
+        hits = leaks_session(Path(args.session), [Path(f) for f in args.files])
+    emit(args, {"status": "invalid" if hits else "ok",
+                "line": "\n".join(hits) if hits else "ok: no leaks", "hits": hits})
+    return EXIT_ACTION if hits else EXIT_OK
+
+
 # --- CLI ----------------------------------------------------------------------
 
 COMMANDS: dict = {
     "check": (_setup_check, cmd_check),
     "ingest": (_setup_ingest, cmd_ingest),
     "ledger": (_setup_ledger, cmd_ledger),
+    "leaks": (_setup_leaks, cmd_leaks),
 }
 
 
