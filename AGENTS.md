@@ -82,10 +82,10 @@ For larger changes, have a reviewer on a different model family read the diff ag
 
 ## Status and next steps
 
-v0.2.1: four goals, moderator-judged ending, and the checkpoint loop are specified and have been reviewed on paper by agents on two model families. One full critique leg has run live on three model families (opening round, two counter-questions, four follow-up rounds, checkpoint). Seats followed the formats, overran the 250-word limit by roughly 10–25%, conceded and refined positions without converging falsely, and engaged each other's claims once they could actually read them. v0.2.1 added from that run: context before choice dialogs, model names toward the user, a user-only `transcript.md`, a user-chosen round cap (1–10), and `--auto`.
+v0.2.1: four goals, moderator-judged ending, and the checkpoint loop are specified and have been reviewed on paper by agents on two model families. One full critique leg has run live on three model families (opening round, two counter-questions, four follow-up rounds, checkpoint). Seats followed the formats, overran the 250-word limit by roughly 10–25%, conceded and refined positions without converging falsely, and engaged each other's claims once they could actually read them. v0.2.1 added from that run: context before choice dialogs, model names toward the user, a user-only `transcript.md`, a user-chosen round cap (1–10), and `--auto`. Since then, untested live: progress updates per seat and round (v0.2.2), thinking levels relative to each model's default (v0.2.2), a change log with the reason for every position change (v0.2.3), and an intake question before launch on whether the user wants to give input, asked together with the round cap (v0.2.4).
 
 Open work:
-1. Simulated end-to-end run per goal, including one goal switch.
+1. Simulated end-to-end run per goal, including one goal switch; check that v0.2.2–v0.2.4 behave as specified.
 2. Measure cost per mode (agent turns; tokens where Paseo reports them) and tune word limits (all seats overran 250 words in the live run).
 3. Grounded mode test (a file subject and a web subject).
 4. Permission behaviour per provider mode: which modes let seats answer without prompts, and which can read session files.
