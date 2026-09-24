@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
 metadata:
-  version: "0.2.1"
+  version: "0.2.2"
   compatibility: "Requires Paseo agent tools (or the paseo CLI) and at least two usable provider/model pairs."
 ---
 
@@ -73,6 +73,14 @@ FRAME -> PANEL -> OPENING ROUND -> LEDGER -> [QUESTION] -> FOLLOW-UP ROUND -> LE
 
 Pause for the user only when their answer can move a crux. Each question must name the crux or item it moves and which seats it would likely move, and offer three exits: answer, "don't know" (the assumption is then marked uncertain), or "continue without me". Some hosts show a multiple-choice dialog without the text written before it in the same turn. So give the context (where the panel stands, the crux, which seats the answer would move) as a message of its own first. If you use a choice tool, also make its question text self-contained: one line of context plus the question, and say that free-text answers are welcome. At most two per pause; at most one framing challenge per session. Feed every answer to all seats in the next round. With `--auto` (or when the user says "let them run" mid-session) the panel runs on its own: no counter-questions or pauses, and the round cap is not asked (the table value applies unless `--rounds` is given); seats' questions for the user become open assumptions, listed under "Questions for you" at the checkpoint; the leg runs until it is clear or hits the cap, then the checkpoint and feedback loop proceed as usual. In an unattended session (nobody will read the checkpoint soon) the same applies and the first checkpoint is final.
 
+## Progress updates
+
+Keep the user informed, also with `--auto`: running on its own means no pauses, not silence. Toward the user, use model names; keep each update to a few lines and build it from the ledger, not from raw seat output.
+
+- **While a round runs:** a one-line note when a seat finishes (`2 of 4 in`), and at once when a seat stalls, is skipped, or is replaced.
+- **After each round:** round `n` of the cap; per seat one line on what moved (conceded, changed position, new idea or option, attack on whom); the live cruxes; and the moderator's call (another round, and why, or checkpoint next).
+- Never tell the user only what you are about to check or poll; report what the panel did.
+
 ## Moderator neutrality
 
 - Take no position on the subject. You may flag a factual error in a seat's output only with evidence, and record that you did.
@@ -90,7 +98,8 @@ Skill files and panel prompts are in English. Talk to the user, including counte
 - A new or replacement seat catches up from the latest checkpoint and ledger, never the full history.
 - Enforce the word limits in the prompt templates. Refer to items by ID (`B-C2`) instead of quoting.
 - Move seat output to files with the CLI instead of copying it through your own context, and let seats read each other's files themselves.
-- Normal thinking in the opening round; the lowest available thinking level for follow-ups when the mode is `--quick`. The brainstorm select prompt and fairness checks always run at the lowest available thinking level.
+- Thinking level per seat: the model's own default (as `list_models` reports it; if none is marked, launch without a thinking option) is the baseline for standard mode. `--deep` runs one step above that default in the model's own list of options (for example medium → high), or at the default if it is already the highest; `--quick` follow-ups run at the lowest available level. The brainstorm select prompt and fairness checks always run at the lowest available level.
+- `send_agent_prompt` does not set thinking: change a seat's level with `update_agent` (`thinkingOptionId`) before the prompt, and set it back before the seat's next regular round.
 - Targeted extra rounds address only the seats and items that failed a check. Stop early per the ending-a-leg rule. Suspiciously fast consensus after the opening round in `--quick` mode ends the leg, and the checkpoint says so.
 
 ## Paseo runtime rules
@@ -107,7 +116,7 @@ Skill files and panel prompts are in English. Talk to the user, including counte
 Default: `${XDG_STATE_HOME:-$HOME/.local/state}/paseo-hive/<YYYYMMDD-HHMM>-<slug>/`, never inside the user's repository unless asked. Layout:
 
 ```text
-brief.md                 subject, goal, mode, panel (seat -> role or lens, provider/model)
+brief.md                 subject, goal, mode, panel (seat -> role or lens, provider/model, thinking level)
 leg-1/round-1/A.md ...   raw seat output
 leg-1/ledger-1.md        ledger after round 1
 leg-1/questions.md       mid-leg questions and answers
