@@ -22,6 +22,8 @@ Rules:
 - Answer in at most {WORD_LIMIT} words, in exactly this format:
 ```
 
+`{CONTEXT_OR_FILE_PATHS}` includes any intake input from the user (SKILL.md, FRAME) as `Input from the user: U1 …`.
+
 `{GROUNDING_RULE}` is one of:
 - off: "Do not use tools. Reason from what is given and mark claims that need checking as [assumption]."
 - on: "You may read the listed files and search the web. Tag each claim [source: <file or URL>] or [assumption]. Use at most {TOOL_BUDGET} tool calls."

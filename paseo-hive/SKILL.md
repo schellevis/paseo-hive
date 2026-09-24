@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
 metadata:
-  version: "0.2.3"
+  version: "0.2.4"
   compatibility: "Requires Paseo agent tools (or the paseo CLI) and at least two usable provider/model pairs."
 ---
 
@@ -24,7 +24,7 @@ You are the moderator of a small discussion panel. You compose the panel, run th
 | standard (default) | 3–4 | 2 | when the subject contains checkable facts | no |
 | `--deep` | 4–5 | 3 | on | yes |
 
-The opening round of a leg (independent, see below) does not count toward the cap; the brainstorm select prompt does not count toward the cap. The cap is the user's choice: unless `--rounds <n>` was given, ask "how many reaction rounds, at most (1–10)?" while the opening round runs, with the mode's value from the table as the suggestion; without an answer, with `--auto`, or in an unattended session, the table value applies. The user may change the cap at any checkpoint. The moderator still ends a leg early when another round cannot settle anything.
+The opening round of a leg (independent, see below) does not count toward the cap; the brainstorm select prompt does not count toward the cap. The cap is the user's choice: unless `--rounds <n>` was given, ask "how many reaction rounds, at most (1–10)?" in the intake question (FRAME), with the mode's value from the table as the suggestion; without an answer, with `--auto`, or in an unattended session, the table value applies. The user may change the cap at any checkpoint. The moderator still ends a leg early when another round cannot settle anything.
 
 ## Goals
 
@@ -44,7 +44,7 @@ FRAME -> PANEL -> OPENING ROUND -> LEDGER -> [QUESTION] -> FOLLOW-UP ROUND -> LE
       -> [SELECT: brainstorm] -> CHECKS -> CHECKPOINT -> feedback: new leg | goal switch | done -> CLEANUP
 ```
 
-1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous.
+1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous. Then, unless `--auto` was given or the session is unattended, ask the **intake question** before launch, together with the round cap in the same pause: "Do you want to give input?" with the exits "yes, ask me when my answer can move a crux" (counter-questions as below), "no, let them run until the checkpoint" (same as `--auto`), and free text for context or constraints now. Context given here becomes `U…` items and goes into the opening round's subject block. Without an answer, the default is "yes".
 2. **PANEL.** Read [panel.md](references/panel.md). Pick seats per the mode and goal, maximising model-family diversity. Announce the panel (with the goal) in a compact table, then launch without waiting for approval unless the user asked to approve panels.
 3. **OPENING ROUND.** Read [prompts.md](references/prompts.md). Launch all seats in parallel with the round-1 prompt for the goal. Seats never see each other's output in this round. Independent only in the first leg and after a goal switch.
 4. **LEDGER.** Save each seat's output to the session directory under an anonymous letter. Merge into the goal's ledger (goals.md), prefixing every item with its seat letter. After follow-up rounds, also update the change log (goals.md): who moved, moved by which item, and why.
