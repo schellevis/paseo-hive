@@ -587,11 +587,206 @@ def cmd_ingest(args) -> int:
     return exit_for(res["status"])
 
 
+# --- ledger -------------------------------------------------------------------
+
+CHOICE_FIELDS = ("POSITION", "RANKING", "BEST NEXT QUESTION")
+
+
+def _renumber(base: str, taken: set[str]) -> str:
+    """`base` if free, else the next free number for the same seat and item letter."""
+    if base not in taken:
+        return base
+    stem = re.fullmatch(r"([A-Z]-[A-Z]+)\d+", base).group(1)
+    used = [int(t[len(stem):]) for t in taken if t.startswith(stem) and t[len(stem):].isdigit()]
+    return f"{stem}{max(used) + 1}"
+
+
+def _suffix(base: str, taken: set[str]) -> str:
+    """`base`, `base2`, `base3`, ...: the first one not taken (WILDCARD and NEW items)."""
+    cand, n = base, 2
+    while cand in taken:
+        cand, n = f"{base}{n}", n + 1
+    return cand
+
+
+def _entries(answers: dict[str, str], fmt: dict) -> list[tuple[str, dict, dict]]:
+    """(seat, field spec, item) for every ledger-producing item, in seat-letter order."""
+    out = []
+    for seat in sorted(answers):
+        fields = parse_answer(answers[seat], fmt)["fields"]
+        for spec in fmt["fields"]:
+            field = fields.get(spec["name"])
+            if field is None:
+                continue
+            if spec["kind"] == "items":
+                items, _ = parse_items(field["lines"], spec)
+                out += [(seat, spec, it) for it in items]
+            elif spec.get("ledger_id"):
+                text = " ".join(field["lines"]).strip()
+                if text and text.strip('". ').lower() != "none":
+                    out.append((seat, spec, {"local": spec["ledger_id"], "n": None, "tags": [],
+                                             "text": text, "builds_on": [], "new": False}))
+    return out
+
+
+def build_items(answers: dict[str, str], rnd: str, fmt: dict, existing: list[dict],
+                elsewhere: list[dict] = (), previous: list[dict] = ()) -> list[dict]:
+    """Ledger records for one round: session-unique IDs, O numbers for NEW options.
+
+    `existing` holds this leg's records of other rounds, `elsewhere` the records of other
+    legs, and `previous` this round's records from an earlier run. Previous IDs are reserved
+    and reused first; only then are fresh IDs allocated (spec C1, C3). Ratings cite an
+    option; they never allocate or reserve its number.
+    """
+    others = [*existing, *elsewhere]
+    taken = {i["id"] for i in others if i["kind"] != "rating"}
+    entries = _entries(answers, fmt)
+
+    def key(seat, spec, it):
+        if spec.get("id") == "O":
+            return (seat, "NEW") if it["new"] else None  # ratings cite the shared option
+        return (seat, it["local"])
+
+    prev = {(i["seat"], "NEW" if i["kind"] == "option" else i.get("local")): i["id"]
+            for i in previous if i["kind"] != "rating"}
+    ids: dict[int, str] = {}
+    for n, (seat, spec, it) in enumerate(entries):  # pass 1: shared ratings, reused IDs
+        k = key(seat, spec, it)
+        if k is None:
+            ids[n] = it["local"]
+        elif k in prev and prev[k] not in taken:
+            ids[n] = prev[k]
+            taken.add(prev[k])
+    o_numbers = {int(x[1:]) for x in taken | {i["id"] for i in others} if re.fullmatch(r"O\d+", x)}
+    o_numbers |= {it["n"] for _, sp, it in entries if sp.get("id") == "O" and it["n"] is not None}
+    for n, (seat, spec, it) in enumerate(entries):  # pass 2: fresh IDs
+        if n in ids:
+            continue
+        if spec.get("id") == "O":
+            o_numbers.add(max(o_numbers, default=0) + 1)
+            ids[n] = f"O{max(o_numbers)}"
+        elif spec.get("ledger_id"):
+            ids[n] = _suffix(f"{seat}-{spec['ledger_id']}", taken)
+        else:
+            ids[n] = _renumber(f"{seat}-{it['local']}", taken)
+        taken.add(ids[n])
+    out = []
+    for n, (seat, spec, it) in enumerate(entries):
+        if spec.get("id") == "O":
+            kind = "option" if it["new"] else "rating"
+        elif spec.get("ledger_id"):
+            kind = spec["ledger_id"].lower()
+        else:
+            kind = spec["name"].lower()
+        out.append({"id": ids[n], "local": it["local"], "seat": seat, "round": rnd, "kind": kind,
+                    "tags": it["tags"], "text": it["text"], "builds_on": it["builds_on"]})
+    return out
+
+
+def session_dangling(session: Path, formats: dict, mode: str) -> list[str]:
+    """References to unknown IDs in every ledgered round of the session (spec C3, C4)."""
+    known = known_ids(session)
+    out = []
+    for leg in sorted(Path(session).glob("leg-*")):
+        rounds = leg / "rounds.json"
+        if not rounds.exists():
+            continue
+        for rnd, fmt_id in load_json(rounds).items():
+            rnd_dir = seat_path(session, int(leg.name[4:]), rnd, "A").parent
+            for path in sorted(p for p in rnd_dir.glob("*.md") if re.fullmatch(r"[A-Z]\.md", p.name)):
+                res = check_answer(read_text(path), fmt_id, formats, mode, known)
+                out += [f"{leg.name} round {rnd}: {path.stem} cites {r}" for r in res["unknown"]]
+    return out
+
+
+def render_ledger(leg: int, rnd: str, items: list[dict], moderator: str) -> str:
+    lines = [f"# Ledger, leg {leg}, round {rnd}", "",
+             "## Items (generated by hive.py; do not edit)", ""]
+    for seat in sorted({i["seat"] for i in items}):
+        lines.append(f"### Seat {seat}")
+        for i in (x for x in items if x["seat"] == seat):
+            tags = " ".join(f"[{k}: {v}]" if k else f"[{v}]" for k, v in i["tags"])
+            label = f"{i['id']} (NEW from {seat})" if i["kind"] == "option" else i["id"]
+            text = i["text"] if len(i["text"]) <= 120 else i["text"][:117] + "..."
+            lines.append(" ".join(p for p in (label, tags, text) if p) + f" (round {i['round']})")
+        lines.append("")
+    return "\n".join(lines) + "\n" + (moderator or f"{MOD_HEADER}\n\n")
+
+
+def change_lines(answers: dict[str, str], fmt: dict) -> list[str]:
+    """Per seat: the position/ranking choice and the IDs its BECAUSE cites."""
+    kinds = {f["name"]: f["kind"] for f in fmt["fields"]}
+    choice = next((n for n in CHOICE_FIELDS if kinds.get(n) == "choice"), None)
+    if not choice or "BECAUSE" not in kinds:
+        return []
+    out = []
+    for seat in sorted(answers):
+        fields = parse_answer(answers[seat], fmt)["fields"]
+        value = fields.get(choice, {}).get("first", "").split()
+        because = sorted(set(ID_RE.findall(" ".join(fields.get("BECAUSE", {}).get("lines", [])))))
+        out.append(f"{seat}: {choice} {value[0] if value else '?'}; "
+                   f"BECAUSE {', '.join(because) or 'no id'}")
+    return out
+
+
+def _setup_ledger(p) -> None:
+    p.add_argument("--session", required=True)
+    p.add_argument("--leg", type=int, required=True)
+    p.add_argument("--round", required=True, help="round number or 'select'")
+    p.add_argument("--format", required=True)
+    p.add_argument("--mode", default="standard", choices=MODES)
+
+
+def cmd_ledger(args) -> int:
+    formats = load_formats()
+    fmt = get_format(formats, args.format)
+    session = Path(args.session)
+    leg_dir = session / f"leg-{args.leg}"
+    rnd_dir = seat_path(session, args.leg, args.round, "A").parent
+    files = sorted(p for p in rnd_dir.glob("*.md") if re.fullmatch(r"[A-Z]\.md", p.name))
+    if not files:
+        raise HiveError(f"no seat files in {rnd_dir}")
+    answers = {}
+    for path in files:
+        text = read_text(path)
+        res = check_answer(text, args.format, formats, args.mode)
+        if res["status"] == "invalid":
+            emit(args, {"status": "invalid", "line": f"invalid: {path}: {res['line']}"})
+            return EXIT_ACTION
+        answers[path.stem] = text
+    items_path = leg_dir / "items.json"
+    items = load_json(items_path) if items_path.exists() else []
+    previous = [i for i in items if i["round"] == args.round]
+    items = [i for i in items if i["round"] != args.round]
+    elsewhere = [i for leg in sorted(session.glob("leg-*"))
+                 if leg != leg_dir and (leg / "items.json").exists()
+                 for i in load_json(leg / "items.json")]
+    new_items = build_items(answers, args.round, fmt, items, elsewhere, previous)
+    items += new_items
+    atomic_write(items_path, json.dumps(items, indent=1, ensure_ascii=False) + "\n")
+    ledger_path = leg_dir / f"ledger-{args.round}.md"
+    old = read_text(ledger_path) if ledger_path.exists() else ""
+    atomic_write(ledger_path, render_ledger(args.leg, args.round, items, moderator_section(old)))
+    rounds_path = leg_dir / "rounds.json"
+    rounds = load_json(rounds_path) if rounds_path.exists() else {}
+    rounds[args.round] = args.format
+    atomic_write(rounds_path, json.dumps(rounds, indent=1) + "\n")
+    dangling = session_dangling(session, formats, args.mode)
+    changes = change_lines(answers, fmt)
+    lines = [f"ledger: {len(new_items)} items this round, {len(items)} in leg {args.leg} -> {ledger_path}"]
+    lines += [f"dangling: {d}" for d in dangling] + changes
+    emit(args, {"status": "invalid" if dangling else "ok", "line": "\n".join(lines),
+                "items": new_items, "dangling": dangling, "changes": changes,
+                "file": str(ledger_path)})
+    return EXIT_ACTION if dangling else EXIT_OK
+
+
 # --- CLI ----------------------------------------------------------------------
 
 COMMANDS: dict = {
     "check": (_setup_check, cmd_check),
     "ingest": (_setup_ingest, cmd_ingest),
+    "ledger": (_setup_ledger, cmd_ledger),
 }
 
 
