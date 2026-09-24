@@ -1,0 +1,31 @@
+[User] Round 2 of leg 1. The other seats' latest work is below, inline (seats are anonymous). Do not use any tools or skills.
+
+--- Seat B ---
+OBVIOUS: Longer opening hours; more events.
+IDEAS:
+I1 [novelty: mid] [effort: low] Homework corner: Volunteers staff a corner two evenings a week.
+I2 [novelty: high] [effort: mid] Repair night: Neighbours fix bikes and lamps while children read.
+WILDCARD: Let teenagers run the library one evening a month.
+QUESTION FOR THE USER: none
+
+Your targets: B-I1, B-I2
+Build on your targets: combine, extend, mutate, or transplant them. Do not criticise any idea in this round.
+
+Answer in at most 250 words, in exactly this format:
+BUILDS:
+N1 [builds on: <idea ids>] [novelty: low|mid|high] [effort: low|mid|high] <name>: <max two sentences>
+N2 ...
+(2-4 builds)
+NEW: <at most one idea unrelated to earlier ones, or "none">
+STATUS: continue | nothing new
+QUESTION FOR THE USER: <or "none">
+BUILDS:
+N1 [builds on: B-I1] [novelty: mid] [effort: low] Homework corner with loans: The corner lends laptops for the evening.
+N2 [builds on: B-I1, B-I2] [novelty: high] [effort: mid] Fix-and-learn night: Children do homework while volunteers repair bikes.
+NEW: none
+STATUS: continue
+QUESTION FOR THE USER: none
+[Thought] Targets were B-I1 and B-I2. Let me draft first.
+BUILDS:
+N1 draft [builds on: B-I1] homework corner plus loans
+QUESTION FOR THE USER: none (unattended).

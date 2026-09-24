@@ -1,0 +1,13 @@
+[User] End of leg 1. All ideas of this leg:
+A-I1 homework corner [mid/low] · B-I2 repair night [high/mid] · A-I3 quiet hour [low/low] · A-I4 late loans [mid/mid]
+Now, and only now, be critical. Do not use any tools or skills. Answer in at most 120 words:
+SHORTLIST: <three idea ids, best first> — <one line each: why>
+WILDCARD KEEP: <one risky idea id worth keeping, or "none">
+DROP: <idea ids that should go> — <one line each: why>
+SHORTLIST: B-I2 — Draws adults and children at once.
+SHORTLIST: A-I1 — Cheap and uses existing volunteers.
+SHORTLIST: A-I3 — Almost free to try.
+
+WILDCARD KEEP: A-WILDCARD — Risky but could change habits.
+
+DROP: none — Every idea is cheap enough to pilot.

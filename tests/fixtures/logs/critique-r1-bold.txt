@@ -1,0 +1,26 @@
+[User] You are seat A on a small discussion panel. Goal: critique. Your role: Skeptic — Which assumptions are wrong, and what evidence cuts against this?
+
+Subject:
+<<<
+"Moving the invoice export to streaming will cut support tickets."
+>>>
+
+Rules:
+- Work alone. You will see the other seats' work later.
+- Answer in at most 250 words, in exactly this format:
+POSITION: <one sentence>
+CLAIMS:
+C1 [certain|likely|guess] <max two sentences>
+C2 ...
+(3-5 claims)
+WEAKEST ASSUMPTION: <the assumption in the subject most likely to be wrong>
+CRUX: <what fact or answer would change your position>
+QUESTION FOR THE USER: <one question only the person asking can answer, or "none">
+**POSITION:** Streaming will not cut tickets; most tickets are about wrong totals, not late files.
+**CLAIMS:**
+C1 [likely] Ticket topics point at data quality. Latency is rarely mentioned.
+C2 [certain] Streaming adds a broker nobody on the team runs today.
+C3 [guess] Customers read the export once a day.
+**WEAKEST ASSUMPTION:** That tickets are caused by delay.
+**CRUX:** A ticket sample showing delay as the main complaint.
+**QUESTION FOR THE USER:** Do you have a tagged sample of recent tickets?

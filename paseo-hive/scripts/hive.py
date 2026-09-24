@@ -436,10 +436,162 @@ def cmd_check(args) -> int:
     return exit_for(res["status"])
 
 
+# --- ingest -------------------------------------------------------------------
+
+_LIST_ITEM = re.compile(r"^\s*([-*]|\d+[.)])\s")
+
+
+def _is_answer_start(region: list[str], i: int, first: str) -> bool:
+    line = region[i]
+    if MARKER.match(line) or PLACEHOLDER.search(line):
+        return False
+    hit = field_at(line, [first])
+    if not hit:
+        return False
+    if not hit[1]:  # "BUILDS:" alone: a template if the next line has placeholders
+        nxt = next((l for l in region[i + 1:] if l.strip()), "")
+        if PLACEHOLDER.search(nxt):
+            return False
+    return True
+
+
+def _answer_from(region: list[str], start: int, fmt: dict) -> str:
+    names = field_names(fmt)
+    last, last_kind = names[-1], fmt["fields"][-1]["kind"]
+    out: list[str] = []
+    in_last = False
+    for j in range(start, len(region)):
+        line = region[j]
+        if MARKER.match(line):
+            break
+        hit = field_at(line, names)
+        if in_last:
+            if last_kind in ("line", "choice"):
+                if not (hit and hit[0] == last):
+                    break
+            elif not line.strip():
+                nxt = next((l for l in region[j + 1:] if l.strip()), None)
+                if nxt is None or MARKER.match(nxt) or not (
+                        field_at(nxt, [last]) or _LIST_ITEM.match(nxt)):
+                    break
+        if hit and hit[0] == last:
+            in_last = True
+        out.append(line)
+    while out and not out[-1].strip():
+        out.pop()
+    return "\n".join(out) + "\n"
+
+
+def extract_answer(log_text: str, fmt: dict) -> str | None:
+    """The seat's answer from `paseo logs --filter text` output, or None."""
+    lines = log_text.splitlines()
+    users = [i for i, l in enumerate(lines) if l.startswith("[User]")]
+    region = lines[users[-1] + 1:] if users else lines
+    names = field_names(fmt)
+    starts = [i for i in range(len(region)) if _is_answer_start(region, i, names[0])]
+    if not starts:
+        return None
+    # The answer follows the echoed template: ignore starts before its last line.
+    floor = max((i for i, l in enumerate(region) if PLACEHOLDER.search(l) and i < starts[-1]),
+                default=-1)
+    starts = [s for s in starts if s > floor]
+    best = None
+    for i in reversed(starts):
+        while (i - 1 > floor and field_at(region[i - 1], names[:1])
+               and not PLACEHOLDER.search(region[i - 1])):
+            i -= 1
+        answer = _answer_from(region, i, fmt)
+        if best is None:
+            best = answer
+        if all(n in parse_answer(answer, fmt)["fields"] for n in names):
+            return answer
+    return best
+
+
+def seat_path(session: Path, leg: int, rnd: str, seat: str) -> Path:
+    sub = "select" if rnd == "select" else f"round-{rnd}"
+    return Path(session) / f"leg-{leg}" / sub / f"{seat}.md"
+
+
+def atomic_write(path: Path, text: str) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def keep_previous(path: Path) -> Path:
+    n = 1
+    while (old := path.with_name(f"{path.stem}.v{n}{path.suffix}")).exists():
+        n += 1
+    shutil.copy2(path, old)
+    return old
+
+
+def read_log(args) -> str:
+    if args.log:
+        return read_text(args.log)
+    paseo = shutil.which("paseo")
+    if not paseo:
+        raise HiveError("paseo CLI not found; use --log")
+    proc = subprocess.run([paseo, "logs", args.agent, "--filter", "text"],
+                          capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        raise HiveError(f"paseo logs failed: {proc.stderr.strip()}")
+    return proc.stdout
+
+
+def _setup_ingest(p) -> None:
+    p.add_argument("--session", required=True)
+    p.add_argument("--seat", required=True)
+    p.add_argument("--leg", type=int, required=True)
+    p.add_argument("--round", required=True, help="round number or 'select'")
+    p.add_argument("--format", required=True)
+    p.add_argument("--mode", default="standard", choices=MODES)
+    p.add_argument("--force", action="store_true", help="replace; keep the old file as <SEAT>.vN.md")
+    src = p.add_mutually_exclusive_group(required=True)
+    src.add_argument("--agent", help="agent ID; runs `paseo logs <id> --filter text`")
+    src.add_argument("--log", help="file with `paseo logs --filter text` output")
+
+
+def cmd_ingest(args) -> int:
+    if not re.fullmatch(r"[A-Z]", args.seat):
+        raise HiveError("--seat must be one capital letter")
+    if not (args.round == "select" or args.round.isdigit()):
+        raise HiveError("--round must be a number or 'select'")
+    formats = load_formats()
+    fmt = get_format(formats, args.format)
+    if fmt.get("kind") == "fairness":
+        raise HiveError("fairness replies are checked with `check --format fairness`, not ingested")
+    answer = extract_answer(read_log(args), fmt)
+    if answer is None:
+        emit(args, {"status": "invalid", "line": "invalid: answer not found"})
+        return EXIT_ACTION
+    session = Path(args.session)
+    target = seat_path(session, args.leg, args.round, args.seat)
+    if target.exists():
+        if not args.force:
+            raise HiveError(f"{target} exists; use --force to replace it")
+        keep_previous(target)
+    atomic_write(target, answer)
+    known = known_ids(session) if any(session.glob("leg-*/items.json")) else None
+    res = check_answer(answer, args.format, formats, args.mode, known)
+    res["file"] = str(target)
+    emit(args, res)
+    return exit_for(res["status"])
+
+
 # --- CLI ----------------------------------------------------------------------
 
 COMMANDS: dict = {
     "check": (_setup_check, cmd_check),
+    "ingest": (_setup_ingest, cmd_ingest),
 }
 
 
