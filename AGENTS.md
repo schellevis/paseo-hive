@@ -26,8 +26,8 @@ README.md                            public description and example invocations
 1. **Independence before exposure.** The opening round of a leg is blind; seats see each other's work only in follow-up rounds.
 2. **Model diversity over persona count.** Three seats on three model families beat five seats on one. With one family available, the checkpoint says "Limited diversity".
 3. **Preserve diversity.** "Preserve diversity: disagreement in critique and decide, divergence in brainstorm and explore. Never converge prematurely." No manufactured consensus.
-4. **Neutral, anonymising moderator.** Seats see letters (A, B, C), never roles or models. The seat-to-model mapping lives only in the session's `brief.md` and in the user-facing panel block, never in `checkpoint-<n>.md` (new seats read that file).
-5. **Moderator-judged ending.** "Stop when another round cannot settle anything." Saturation signals, `STATUS: continue | nothing new` lines, and minimum-engagement checks guide the judgement; a per-mode round cap forces a checkpoint.
+4. **Neutral, anonymising moderator.** Seats see letters (A, B, C), never roles or models. The seat-to-model mapping lives only in the session's `brief.md`, the user-only `transcript.md`, and messages to the user, never in `checkpoint-<n>.md` (new seats read that file).
+5. **Moderator-judged ending.** "Stop when another round cannot settle anything." Saturation signals, `STATUS: continue | nothing new` lines, and minimum-engagement checks guide the judgement; a round cap the user picks (1–10, suggested per mode) forces a checkpoint.
 6. **Token discipline.** One agent per seat for the whole session (later rounds via `send_agent_prompt`), strict word limits, IDs instead of quotes, files instead of copying text through the moderator, lowest thinking level for select and fairness prompts, early stopping.
 
 ## Editing rules
@@ -75,16 +75,19 @@ For larger changes, have a reviewer on a different model family read the diff ag
 - Some providers' read-only or "accept edits" modes still ask permission for every shell command, which floods the moderator. Seats should not need tools unless grounding is on; say so in the prompt.
 - Plan-style modes that end by asking to leave plan mode can deadlock an unattended agent. Avoid them for seats unless verified.
 - Provider streams occasionally end without a finish reason. One focused reprompt of the same agent usually recovers it without losing context.
-- `paseo logs <id> --filter text` can move a seat's output into a file without passing it through the moderator's context.
+- `paseo logs <id> --filter text` can move a seat's output into a file without passing it through the moderator's context. The log also contains the prompt (and, for some providers, the model's thoughts): cut from the last line that starts the answer format (for example `POSITION:` or `ATTACKS:`) to the last `QUESTION FOR THE USER` line.
+- Some sandboxed providers cannot read files outside their workspace, so a seat given only file paths may answer blind. Check for that in the answer ("If this…") and paste the other seats' output inline for such seats; inlining for every seat also avoids per-file permission prompts in ask-style modes.
+- Seats may try to load their own skills or plugins before answering. Say "Do not use any tools or skills" in follow-up prompts that carry everything inline.
+- Some hosts do not show text written in the same turn as a multiple-choice dialog; the counter-question rule in `SKILL.md` covers this.
 
 ## Status and next steps
 
-v0.2.0: four goals, moderator-judged ending, and the checkpoint loop are specified and have been reviewed on paper by agents on two model families. Only the critique opening round has run live. That smoke test showed that the round-1 format is followed and stays within the word limit, and that a panel without a defending seat on a contested claim converges immediately (hence the Advocate rule in `panel.md`).
+v0.2.1: four goals, moderator-judged ending, and the checkpoint loop are specified and have been reviewed on paper by agents on two model families. One full critique leg has run live on three model families (opening round, two counter-questions, four follow-up rounds, checkpoint). Seats followed the formats, overran the 250-word limit by roughly 10–25%, conceded and refined positions without converging falsely, and engaged each other's claims once they could actually read them. v0.2.1 added from that run: context before choice dialogs, model names toward the user, a user-only `transcript.md`, a user-chosen round cap (1–10), and `--auto`.
 
 Open work:
 1. Simulated end-to-end run per goal, including one goal switch.
-2. Measure cost per mode (agent turns; tokens where Paseo reports them) and tune word limits.
+2. Measure cost per mode (agent turns; tokens where Paseo reports them) and tune word limits (all seats overran 250 words in the live run).
 3. Grounded mode test (a file subject and a web subject).
-4. Permission behaviour per provider mode: which modes let seats answer without prompts.
+4. Permission behaviour per provider mode: which modes let seats answer without prompts, and which can read session files.
 5. A small eval set of subjects with known weak spots: does the panel find them without converging falsely?
 6. Open questions: how long idle panel agents survive between checkpoints; whether 10 minutes is the right stall timeout for a seat.

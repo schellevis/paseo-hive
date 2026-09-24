@@ -35,7 +35,11 @@ Below the checkpoint, **only in the message to the user and never in `checkpoint
 </details>
 ```
 
-Rule: `checkpoint-<n>.md` never contains role or model names, so seats (including new seats reading it through the catch-up prompt) stay anonymous. The seat-to-role/model mapping lives only in `brief.md` and in the Panel block of the user message.
+In everything the user reads (checkpoint message, counter-questions, progress updates), call seats by their model name instead of their letter, for example "Sonnet 5 argues…" rather than "A argues…"; cite items the same way ("Sonnet 5's C1" instead of `A-C1`). Only when two seats run the same model, add the letter: "Sonnet 5 (A)". Letters remain the only names in anything seats read.
+
+Also write `transcript.md` for the user: every round's raw seat output in order, with each heading showing the seat letter, role or lens, and provider/model. Tell the user where it is. Never give its path to a seat.
+
+Rule: `checkpoint-<n>.md` never contains role or model names, so seats (including new seats reading it through the catch-up prompt) stay anonymous. The seat-to-role/model mapping lives only in `brief.md`, `transcript.md`, and the user message.
 
 ## Goal-specific sections
 

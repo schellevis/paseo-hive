@@ -10,11 +10,14 @@ A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different
 - a checkpoint that shows where the panel stands and what is still open;
 - your feedback starts the next leg — same panel, possibly a new goal.
 
+You choose how many reaction rounds a leg may take (1–10); `--auto` lets the panel run without pausing for you until the checkpoint. The user-facing report names each seat by its model; the seats themselves only see letters.
+
 ```text
 /paseo-hive Small open-source projects should reject AI-generated pull requests by default.
 /paseo-hive --goal brainstorm How could a public library attract more teenagers?
 /paseo-hive --goal decide --quick SQLite or Postgres for a single-user desktop app?
 /paseo-hive --goal explore --deep What would we need to know before moving a team to a four-day week?
+/paseo-hive --auto --rounds 5 Should a neighbourhood association own its community garden or lease it?
 ```
 
 Status: early draft.
