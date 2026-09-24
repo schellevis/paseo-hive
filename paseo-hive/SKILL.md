@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
 metadata:
-  version: "0.2.4"
+  version: "0.2.5"
   compatibility: "Requires Paseo agent tools (or the paseo CLI) and at least two usable provider/model pairs."
 ---
 
@@ -78,8 +78,9 @@ Pause for the user only when their answer can move a crux. Each question must na
 Keep the user informed, also with `--auto`: running on its own means no pauses, not silence. Toward the user, use model names; keep each update to a few lines and build it from the ledger, not from raw seat output.
 
 - **While a round runs:** a one-line note when a seat finishes (`2 of 4 in`), and at once when a seat stalls, is skipped, or is replaced.
-- **After each round:** round `n` of the cap; per seat one line on what moved (conceded, changed position and moved by which seat's argument, new idea or option, attack on whom); the live cruxes; and the moderator's call (another round, and why, or checkpoint next).
-- Never tell the user only what you are about to check or poll; report what the panel did.
+- **After each round, before the next round's prompts go out** (the opening round included): round `n` of the cap; per seat one line with its current stance in substance (critique: its position; brainstorm: its strongest idea; decide: its top option and why; explore: its best next question) and what moved (conceded, changed position and moved by which seat's argument, new idea or option, attack on whom and on what); the live cruxes, each in one plain sentence; and the moderator's call (another round, and why, or checkpoint next). Never skip it to launch the next round sooner.
+- Example line: "Opus 5.5 holds that X, but conceded Y after GPT-5.5 showed Z; now attacks Fable 5.1's claim that W."
+- A process note ("round 3 runs; seats answer the attacks", "1 of 6 in") is not an update. Never tell the user only what you are about to check, poll, or launch; report what the panel said.
 
 ## Moderator neutrality
 
@@ -97,7 +98,7 @@ Skill files and panel prompts are in English. Talk to the user, including counte
 - One agent per seat for the whole session; later rounds go through `send_agent_prompt` so earlier context is cached. Between checkpoints agents idle at no cost; later legs reuse them so earlier context stays cached.
 - A new or replacement seat catches up from the latest checkpoint and ledger, never the full history.
 - Enforce the word limits in the prompt templates. Refer to items by ID (`B-C2`) instead of quoting.
-- Move seat output to files with the CLI instead of copying it through your own context, and let seats read each other's files themselves.
+- Move seat output to files with the CLI instead of copying it through your own context, and let seats read each other's files themselves. You still read each round's output (or the ledger) yourself: the ledger and the progress update need its substance.
 - Thinking level per seat: the model's own default (as `list_models` reports it; if none is marked, launch without a thinking option) is the baseline for standard mode. `--deep` runs one step above that default in the model's own list of options (for example medium → high), or at the default if it is already the highest; `--quick` follow-ups run at the lowest available level. The brainstorm select prompt and fairness checks always run at the lowest available level.
 - `send_agent_prompt` does not set thinking: change a seat's level with `update_agent` (`thinkingOptionId`) before the prompt, and set it back before the seat's next regular round.
 - Targeted extra rounds address only the seats and items that failed a check. Stop early per the ending-a-leg rule. Suspiciously fast consensus after the opening round in `--quick` mode ends the leg, and the checkpoint says so.
