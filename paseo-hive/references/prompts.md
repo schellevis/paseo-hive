@@ -100,7 +100,7 @@ Answer in at most {WORD_LIMIT} words, in exactly this format:
 - decide: "Challenge the ratings and rankings in your targets; concede where they are right. Address every user item."
 - explore: "Probe your targets for gaps, errors, and overstatements, and add what the maps miss."
 
-Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat. Different seats get different targets where possible. User items (`U…`) are always in scope for every seat.
+Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat. Different seats get different targets where possible. User items (`U…`) are always in scope for every seat. A seat's own load-bearing assumptions (goals.md) are among its targets whenever grounding is on.
 
 ## Follow-up formats
 

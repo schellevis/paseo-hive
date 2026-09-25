@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""paseo-hive helper: ingest, check, ledger, leaks and lint for hive sessions.
+"""paseo-hive helper: ingest, check, ledger, gate, leaks and lint for hive sessions.
 
 Standard library only, Python 3.10+. Nothing here talks to the network. The
 only external commands are `paseo logs` (ingest --agent) and `git ls-files`
@@ -10,6 +10,7 @@ I/O error.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -526,6 +527,22 @@ def atomic_write(path: Path, text: str) -> None:
         raise
 
 
+def digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def update_records(leg_dir: Path, section: str, rnd: str, value) -> None:
+    """What ingest and ledger wrote, per round, so `gate` can tell it from hand edits."""
+    path = Path(leg_dir) / "records.json"
+    records = load_json(path) if path.exists() else {}
+    records.setdefault(section, {})[rnd] = value
+    atomic_write(path, json.dumps(records, indent=1, sort_keys=True) + "\n")
+
+
+def items_part(ledger_text: str) -> str:
+    return ledger_text[:len(ledger_text) - len(moderator_section(ledger_text))]
+
+
 def keep_previous(path: Path) -> Path:
     n = 1
     while (old := path.with_name(f"{path.stem}.v{n}{path.suffix}")).exists():
@@ -580,6 +597,10 @@ def cmd_ingest(args) -> int:
             raise HiveError(f"{target} exists; use --force to replace it")
         keep_previous(target)
     atomic_write(target, answer)
+    leg_dir = session / f"leg-{args.leg}"
+    records = load_json(leg_dir / "records.json") if (leg_dir / "records.json").exists() else {}
+    update_records(leg_dir, "ingest", args.round,
+                   {**records.get("ingest", {}).get(args.round, {}), args.seat: digest(answer)})
     known = known_ids(session) if any(session.glob("leg-*/items.json")) else None
     res = check_answer(answer, args.format, formats, args.mode, known)
     res["file"] = str(target)
@@ -766,7 +787,11 @@ def cmd_ledger(args) -> int:
     atomic_write(items_path, json.dumps(items, indent=1, ensure_ascii=False) + "\n")
     ledger_path = leg_dir / f"ledger-{args.round}.md"
     old = read_text(ledger_path) if ledger_path.exists() else ""
-    atomic_write(ledger_path, render_ledger(args.leg, args.round, items, moderator_section(old)))
+    ledger_text = render_ledger(args.leg, args.round, items, moderator_section(old))
+    atomic_write(ledger_path, ledger_text)
+    update_records(leg_dir, "ledger", args.round,
+                   {"inputs": {seat: digest(text) for seat, text in answers.items()},
+                    "items": digest(items_part(ledger_text))})
     rounds_path = leg_dir / "rounds.json"
     rounds = load_json(rounds_path) if rounds_path.exists() else {}
     rounds[args.round] = args.format
@@ -875,6 +900,85 @@ def cmd_leaks(args) -> int:
     return EXIT_ACTION if hits else EXIT_OK
 
 
+# --- gate ---------------------------------------------------------------------
+
+
+def gate(session: Path, leg: int, rnd: str, skipped: set[str]) -> list[str]:
+    """What still blocks the next round (or the checkpoint) after round `rnd`."""
+    session = Path(session)
+    seats = load_json(session / "seats.json")
+    validate_seats(seats, session / "seats.json")
+    active = sorted({s["letter"] for s in seats["seats"]
+                     if isinstance(s.get("letter"), str) and not s.get("replaced")})
+    if not active:
+        raise HiveError(f"{session / 'seats.json'}: no active seats")
+    leg_dir = session / f"leg-{leg}"
+    records = load_json(leg_dir / "records.json") if (leg_dir / "records.json").exists() else {}
+    ingested = records.get("ingest", {}).get(rnd, {})
+    built = records.get("ledger", {}).get(rnd)
+    ledger_path = leg_dir / f"ledger-{rnd}.md"
+    rel = lambda p: p.relative_to(session)  # noqa: E731
+    fails, answers = [], {}
+    for letter in active:
+        path = seat_path(session, leg, rnd, letter)
+        if path.exists():
+            answers[letter] = digest(read_text(path))
+            if letter not in ingested:
+                fails.append(f"hand-written: {rel(path)} was not saved by hive.py ingest")
+            elif ingested[letter] != answers[letter]:
+                fails.append(f"edited: {rel(path)} changed after hive.py ingest")
+        elif letter not in skipped:
+            fails.append(f"missing: seat {letter} has no ingested answer ({rel(path)}); "
+                         f"run hive.py ingest, or record the skip and pass --skip {letter}")
+    ledger_text = read_text(ledger_path) if ledger_path.exists() else None
+    if ledger_text is None:
+        fails.append(f"missing: {rel(ledger_path)}; run hive.py ledger")
+    elif built is None:
+        fails.append(f"hand-written: {rel(ledger_path)} was not built by hive.py ledger")
+    else:
+        if built["items"] != digest(items_part(ledger_text)):
+            fails.append(f"edited: the Items part of {rel(ledger_path)} changed after hive.py ledger")
+        if built["inputs"] != answers:
+            fails.append(f"stale: the seat answers changed after {rel(ledger_path)} was built; "
+                         "run hive.py ledger again")
+    moderator = moderator_section(ledger_text or "")
+    for letter in sorted(skipped):
+        if letter in answers:
+            fails.append(f"skip: seat {letter} is passed to --skip but has an answer")
+        elif not re.search(rf"^Skipped:.*\b{letter}\b", moderator, re.MULTILINE):
+            fails.append(f"skip: seat {letter} is not recorded as 'Skipped: {letter} (<reason>)' "
+                         f"in the Moderator part of {rel(ledger_path)}")
+    rounds_path = leg_dir / "rounds.json"
+    fmt = load_json(rounds_path).get(rnd, "") if rounds_path.exists() else ""
+    if fmt.endswith("-followup"):
+        changes = leg_dir / "changes.md"
+        text = read_text(changes) if changes.exists() else ""
+        if not re.search(rf"^Round {re.escape(rnd)}\b", text, re.MULTILINE | re.IGNORECASE):
+            fails.append(f"missing: no 'Round {rnd}' entry in {rel(changes)} "
+                         f"(write 'Round {rnd}: no changes' if nobody moved or held)")
+    mode = seats.get("mode") if seats.get("mode") in MODES else "standard"
+    fails += [f"dangling: {d}" for d in session_dangling(session, load_formats(), mode)]
+    fails += [f"leak: {h}" for h in leaks_session(session)]
+    return fails
+
+
+def _setup_gate(p) -> None:
+    p.add_argument("--session", required=True)
+    p.add_argument("--leg", type=int, required=True)
+    p.add_argument("--round", required=True, help="round number or 'select'")
+    p.add_argument("--skip", default="", help="comma-separated seat letters skipped this round")
+
+
+def cmd_gate(args) -> int:
+    if not (args.round == "select" or args.round.isdigit()):
+        raise HiveError("--round must be a number or 'select'")
+    skipped = {s.strip() for s in args.skip.split(",") if s.strip()}
+    fails = gate(Path(args.session), args.leg, args.round, skipped)
+    line = "\n".join(fails) if fails else f"ok: leg {args.leg} round {args.round} is complete"
+    emit(args, {"status": "invalid" if fails else "ok", "line": line, "failures": fails})
+    return EXIT_ACTION if fails else EXIT_OK
+
+
 # --- lint ---------------------------------------------------------------------
 
 HEADINGS = ("Opening round", "Follow-up rounds", "Ledger", "Saturation signals",
@@ -942,6 +1046,7 @@ COMMANDS: dict = {
     "ingest": (_setup_ingest, cmd_ingest),
     "ledger": (_setup_ledger, cmd_ledger),
     "leaks": (_setup_leaks, cmd_leaks),
+    "gate": (_setup_gate, cmd_gate),
     "lint": (_setup_lint, cmd_lint),
 }
 
