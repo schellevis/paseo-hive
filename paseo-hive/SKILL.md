@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
 metadata:
-  version: "0.3.0"
+  version: "0.3.1"
   compatibility: "Requires Paseo agent tools (or the paseo CLI), at least two usable provider/model pairs, and Python 3.10+."
 ---
 
@@ -35,7 +35,7 @@ The opening round of a leg (independent, see below) does not count toward the ca
 | `decide` | choose between options | criteria, options rated per criterion, ranking, what would flip it | challenge ratings and rankings | criteria, decision matrix, ranking split, flip conditions |
 | `explore` | understand a problem space before acting | map of questions and areas, known vs unknown, best next question | find gaps and errors in others' maps | map, biggest unknowns, best next questions, where maps disagree |
 
-Infer the goal from the request: a claim or artefact to test → `critique`; "ideas", "how could we", "what else" → `brainstorm`; "A or B", "which should we choose" → `decide`; "what do we need to know", "help me understand" → `explore`. When unclear, pick the most likely goal and say so in the panel announcement; `--goal` always wins. See [goals.md](references/goals.md) for the round structure, ledger, and saturation signals of each goal.
+Infer the goal from the request: a claim or artefact to test → `critique`; "ideas", "how could we", "what else" → `brainstorm`; "A or B", "which should we choose" → `decide`; "what do we need to know", "help me understand" → `explore`. Unless `--goal` was given, the user picks the goal in the intake question (FRAME), with "you choose" as an exit; with that exit, without an answer, with `--auto`, or in an unattended session, pick the most likely goal and say so in the panel announcement. `--goal` always wins. See [goals.md](references/goals.md) for the round structure, ledger, and saturation signals of each goal.
 
 ## Lifecycle
 
@@ -44,7 +44,7 @@ FRAME -> PANEL -> OPENING ROUND -> LEDGER -> [QUESTION] -> FOLLOW-UP ROUND -> LE
       -> [SELECT: brainstorm] -> CHECKS -> CHECKPOINT -> feedback: new leg | goal switch | done -> CLEANUP
 ```
 
-1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous. Then, unless `--auto` was given or the session is unattended, ask the **intake question** before launch, together with the round cap in the same pause: "Do you want to give input?" with the exits "yes, ask me when my answer can move a crux" (counter-questions as below), "no, let them run until the checkpoint" (same as `--auto`), and free text for context or constraints now. Context given here becomes `U…` items and goes into the opening round's subject block. Without an answer, the default is "yes".
+1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous. Then, unless `--auto` was given or the session is unattended, ask the **intake question** before launch, together with the goal and the round cap in the same pause. Goal (skip if `--goal` was given): "Which goal should the panel work toward?" with each goal and its one-line purpose from the table above, the goal you inferred marked as suggested, and the exit "you choose"; if the choice tool offers fewer than five options, merge the suggestion into "you choose (suggested: <goal>)" and list the other three goals. Input: "Do you want to give input?" with the exits "yes, ask me when my answer can move a crux" (counter-questions as below), "no, let them run until the checkpoint" (same as `--auto`), and free text for context or constraints now. Context given here becomes `U…` items and goes into the opening round's subject block. Without an answer, the default is "yes".
 2. **PANEL.** Read [panel.md](references/panel.md). Pick seats per the mode and goal, maximising model-family diversity. Announce the panel (with the goal) in a compact table, then launch without waiting for approval unless the user asked to approve panels.
 3. **OPENING ROUND.** Read [prompts.md](references/prompts.md). Launch all seats in parallel with the round-1 prompt for the goal. Seats never see each other's output in this round. Independent only in the first leg and after a goal switch.
 4. **LEDGER.** Save each seat's output to the session directory under an anonymous letter with `hive.py ingest`, then build the goal's ledger (goals.md) with `hive.py ledger`, which prefixes every item with its seat letter (see Scripts). After follow-up rounds, also update the change log (goals.md): who moved, moved by which item, and why.
