@@ -145,7 +145,7 @@ def prompt_formats(text: str) -> dict[str, list[str]]:
             section, goal = line[3:].strip(), None
             continue
         if not in_block:
-            m = re.fullmatch(r"(critique|brainstorm|decide|explore):", line.strip())
+            m = re.fullmatch(r"(critique|brainstorm|decide|explore|solve):", line.strip())
             if m:
                 goal = m.group(1)
             elif line.startswith("```"):
@@ -191,7 +191,7 @@ def format_drift(prompts_text: str, formats: dict) -> list[str]:
 _LEAD = re.compile(r"^[\s#*>\-]+")
 PLACEHOLDER = re.compile(r"<[a-z][^>]*>")
 MARKER = re.compile(r"^\[(User|Thought)\]")
-ID_RE = re.compile(r"\b(?:[A-Z]-(?:[A-Z]+\d+|WILDCARD|NEW\d*)|[OMU]\d+)\b")
+ID_RE = re.compile(r"\b(?:[A-Z]-(?:[A-Z]+\d+|WILDCARD|NEW\d*|DIAGNOSIS|PLAN|RESULT)|[OMU]\d+)\b")
 M_LINE = re.compile(r"^\s*[-*]?\s*(M\d+)\b", re.MULTILINE)
 MOD_HEADER = "## Moderator"
 _TAG = re.compile(r"^\s*\[([^\]]*)\]")
@@ -258,7 +258,16 @@ def _item(local: str, n, rest: str, spec: dict, problems: list) -> dict:
                 continue
             value = value.strip()
         if w.get("refs"):
-            builds = [x.strip() for x in value.split(",") if x.strip()]
+            if key == "replaces":
+                if value.lower() == "new":
+                    builds = []
+                elif ID_RE.fullmatch(value):
+                    builds = [value]
+                else:
+                    problems.append(("invalid", f"{local}: [{tag}] must be one id or new"))
+                    builds = []
+            else:
+                builds = [x.strip() for x in value.split(",") if x.strip()]
         elif value.lower() not in w["values"]:
             problems.append(("invalid", f"{local}: [{tag}] not in {'|'.join(w['values'])}"))
         tags.append([key, value])
@@ -610,7 +619,7 @@ def cmd_ingest(args) -> int:
 
 # --- ledger -------------------------------------------------------------------
 
-CHOICE_FIELDS = ("POSITION", "RANKING", "BEST NEXT QUESTION")
+CHOICE_FIELDS = ("POSITION", "RANKING", "BEST NEXT QUESTION", "PLAN")
 
 
 def _renumber(base: str, taken: set[str]) -> str:
@@ -630,6 +639,32 @@ def _suffix(base: str, taken: set[str]) -> str:
     return cand
 
 
+def _after_choice_dash(rest: str) -> str:
+    """Text after the first dash (—, –, or -) in `rest`, or the whole rest if there is none."""
+    found = [(rest.find(d), len(d)) for d in ("—", "–", "-") if d in rest]
+    if not found:
+        return rest.strip()
+    index, length = min(found)
+    return rest[index + length:].strip()
+
+
+def _ledger_line(spec: dict, field: dict) -> str | None:
+    """Text for a ledger_id field, or None when the field produces no entry.
+
+    A choice field emits an entry only for its first value (`changed`), and the text is
+    the part after the dash. Any other ledger field skips a `none` answer.
+    """
+    raw = " ".join(field["lines"]).strip()
+    if spec.get("kind") == "choice":
+        word, _, rest = raw.partition(" ")
+        if word.lower() != spec["values"][0].lower():
+            return None
+        return _after_choice_dash(rest)
+    if raw and raw.strip('". ').lower() != "none":
+        return raw
+    return None
+
+
 def _entries(answers: dict[str, str], fmt: dict) -> list[tuple[str, dict, dict]]:
     """(seat, field spec, item) for every ledger-producing item, in seat-letter order."""
     out = []
@@ -643,8 +678,8 @@ def _entries(answers: dict[str, str], fmt: dict) -> list[tuple[str, dict, dict]]
                 items, _ = parse_items(field["lines"], spec)
                 out += [(seat, spec, it) for it in items]
             elif spec.get("ledger_id"):
-                text = " ".join(field["lines"]).strip()
-                if text and text.strip('". ').lower() != "none":
+                text = _ledger_line(spec, field)
+                if text is not None:
                     out.append((seat, spec, {"local": spec["ledger_id"], "n": None, "tags": [],
                                              "text": text, "builds_on": [], "new": False}))
     return out
@@ -810,7 +845,8 @@ def cmd_ledger(args) -> int:
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}")
 LOCAL_PATH_RE = re.compile(r"/(?:home|Users|workspace)/")
-SEAT_VISIBLE = ("checkpoint-*.md", "leg-*/ledger-*.md", "leg-*/round-*/*.md", "leg-*/select/*.md")
+SEAT_VISIBLE = ("checkpoint-*.md", "leg-*/ledger-*.md", "leg-*/round-*/*.md", "leg-*/select/*.md",
+                "leg-*/work/*.md")
 REPO_SKIP = {"LICENSE", "AGENTS.md"}
 
 
@@ -984,8 +1020,8 @@ def cmd_gate(args) -> int:
 HEADINGS = ("Opening round", "Follow-up rounds", "Ledger", "Saturation signals",
             "Minimum engagement", "Typical user questions")
 VERBATIM = (
-    "Preserve diversity: disagreement in critique and decide, divergence in brainstorm "
-    "and explore. Never converge prematurely.",
+    "Preserve diversity: disagreement in critique and decide, divergence in brainstorm, "
+    "explore, and solve. Never converge prematurely.",
     "Stop when another round cannot settle anything.",
     "Skill files and panel prompts are in English.",
 )
@@ -1008,16 +1044,18 @@ def lint(root: Path) -> list[str]:
         if not (skill_dir / link).exists():
             fails.append(f"SKILL.md links to missing {link}")
     status = sum(1 for l in prompts.splitlines() if l.startswith("STATUS: continue | nothing new"))
-    if status != 4:
-        fails.append(f"prompts.md has {status} STATUS lines (want 4)")
+    if status != 5:
+        fails.append(f"prompts.md has {status} STATUS lines (want 5)")
     for h in HEADINGS:
         count = sum(1 for l in goals.splitlines() if l.startswith(f"### {h}"))
-        if count != 4:
-            fails.append(f"goals.md has {count} '### {h}' headings (want 4)")
+        if count != 5:
+            fails.append(f"goals.md has {count} '### {h}' headings (want 5)")
     fails += format_drift(prompts, formats)
     rule = next((l for l in agents.splitlines() if "Keep field names and IDs identical" in l), "")
     all_fields = {f["name"] for fm in formats["formats"].values() for f in fm.get("fields", [])}
-    for name in re.findall(r"`([^`{}]+)`", rule):
+    # A braced token such as `{IDEA_LEDGER}` sits in backticks too. Require a
+    # capital letter so its closing backtick is not read as the next field name.
+    for name in re.findall(r"`([A-Z][^`{}]*)`", rule):
         if name not in prompts:
             fails.append(f"field {name} missing from prompts.md")
         if name not in all_fields:

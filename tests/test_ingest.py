@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from helpers import CRITIQUE_FOLLOWUP, FIXTURES, hive, run
+from helpers import CRITIQUE_FOLLOWUP, FIXTURES, SOLVE_FOLLOWUP, SOLVE_R1, hive, run
 
 F = hive.load_formats()
 LOGS = FIXTURES / "logs"
@@ -51,6 +51,37 @@ class ExtractTest(unittest.TestCase):
 
     def test_no_answer_returns_none(self):
         self.assertIsNone(hive.extract_answer("[User] hello\nThinking aloud.\n", fmt("critique-r1")))
+
+    def test_solve_answers_are_cut_from_the_echoed_prompt(self):
+        r1_log = (
+            "[User] Round 1.\n"
+            "PROBLEM: <the problem in one sentence, and what counts as solved>\n"
+            "DIAGNOSIS: <the cause or causes, each tagged [source: ...] or [assumption]>\n"
+            "RESULT: <grounded solve: the outcome and how you checked it | otherwise \"none\">\n"
+            "QUESTION FOR THE USER: <or \"none\">\n"
+            + SOLVE_R1 +
+            "[Thought] draft of a different queue.\n"
+        )
+        ans = hive.extract_answer(r1_log, fmt("solve-r1"))
+        self.assertTrue(ans.startswith("PROBLEM: A municipal permit queue"), ans)
+        self.assertTrue(ans.rstrip().endswith("QUESTION FOR THE USER: What share of permits are routine?"), ans)
+        self.assertNotIn("<the problem", ans)
+        self.assertNotIn("draft", ans)
+        self.assertEqual(hive.check_answer(ans, "solve-r1", F)["status"], "ok")
+        follow_log = (
+            "[User] Round 2.\n"
+            "HOLES:\n<item id>: <why this step fails, or which cause or risk is missing>\n"
+            "CHANGED STEPS:\nS1 [replaces: <step id> | new] <the step: max one sentence>\n"
+            "QUESTION FOR THE USER: <or \"none\">\n"
+            + SOLVE_FOLLOWUP +
+            "[Thought] stop\n"
+        )
+        ans = hive.extract_answer(follow_log, fmt("solve-followup"))
+        self.assertTrue(ans.startswith("HOLES:\nA-S2:"), ans)
+        self.assertTrue(ans.rstrip().endswith("QUESTION FOR THE USER: none"), ans)
+        self.assertNotIn("<item id>", ans)
+        self.assertNotIn("[User]", ans)
+        self.assertEqual(hive.check_answer(ans, "solve-followup", F)["status"], "ok")
 
 
 class IngestCliTest(unittest.TestCase):

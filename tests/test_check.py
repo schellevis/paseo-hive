@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from helpers import (BRAINSTORM_R1, CRITIQUE_FOLLOWUP, CRITIQUE_R1, SELECT,
-                     hive, run)
+                     SOLVE_FOLLOWUP, SOLVE_R1, hive, run)
 
 F = hive.load_formats()
 
@@ -98,6 +98,31 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(check(BRAINSTORM_R1, "brainstorm-r1")["status"], "ok")
         bad = BRAINSTORM_R1.replace("[effort: mid] Repair", "[effort: medium] Repair")
         self.assertIn("I2: [effort: medium] not in low|mid|high", check(bad, "brainstorm-r1")["line"])
+
+    def test_solve_r1_is_ok(self):
+        res = check(SOLVE_R1, "solve-r1")
+        self.assertEqual(res["status"], "ok", res["line"])
+
+    def test_solve_r1_step_bounds(self):
+        two = SOLVE_R1.replace("S3 Send exceptions to the shared desk with a written reason.\n", "")
+        res = check(two, "solve-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("STEPS: 2 items, expected 3-6", res["line"])
+        gap = SOLVE_R1.replace("S3 Send", "S4 Send")
+        res = check(gap, "solve-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("numbered [1, 2, 4]", res["line"])
+
+    def test_solve_replaces_tag(self):
+        self.assertEqual(check(SOLVE_FOLLOWUP, "solve-followup")["status"], "ok")
+        two = SOLVE_FOLLOWUP.replace("[replaces: A-S2]", "[replaces: A-S2, A-S3]")
+        res = check(two, "solve-followup")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("S1:", res["line"])
+        empty = SOLVE_FOLLOWUP.replace("[replaces: new]", "[replaces: ]")
+        res = check(empty, "solve-followup")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("S2:", res["line"])
 
     def test_fairness(self):
         self.assertEqual(check("fair\n", "fairness")["status"], "ok")

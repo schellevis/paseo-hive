@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 
 from helpers import (BRAINSTORM_FOLLOWUP, BRAINSTORM_R1, CRITIQUE_FOLLOWUP,
-                     CRITIQUE_R1, DECIDE_R1, run)
+                     CRITIQUE_R1, DECIDE_R1, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_REVISE,
+                     SOLVE_FOLLOWUP_UNCHANGED, SOLVE_R1, SOLVE_R1_RESULT, run)
 
 
 class LedgerTest(unittest.TestCase):
@@ -213,6 +214,76 @@ class LedgerTest(unittest.TestCase):
         code, out = self.ledger(1, "brainstorm-r1")
         self.assertEqual(code, 1)
         self.assertIn("dangling: leg-1 round 2: C cites B-WILDCARD", out)
+
+    def test_solve_round_one_ledger(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        code, out = self.ledger(1, "solve-r1")
+        self.assertEqual(code, 0, out)
+        ids = [i["id"] for i in self.items()]
+        for item in ("A-DIAGNOSIS", "A-PLAN", "A-S1", "A-S2", "A-S3", "A-R1", "B-RESULT"):
+            self.assertIn(item, ids)
+        self.assertFalse(any(i.endswith("-RESULT") and i.startswith("A-") for i in ids))
+        kinds = {i["id"]: i["kind"] for i in self.items()}
+        self.assertEqual(kinds["A-DIAGNOSIS"], "diagnosis")
+        self.assertEqual(kinds["A-PLAN"], "plan")
+        self.assertEqual(kinds["B-RESULT"], "result")
+
+    def test_solve_followup_ids_plans_and_replaces(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        self.assertEqual(self.ledger(1, "solve-r1")[0], 0)
+        self.seat(2, "A", SOLVE_FOLLOWUP)
+        code, out = self.ledger(2, "solve-followup")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("dangling:", out)
+        self.assertIn("A: PLAN changed; BECAUSE B-S2", out)
+        by_id = {i["id"]: i for i in self.items()}
+        self.assertEqual(by_id["A-S4"]["local"], "S1")
+        self.assertEqual(by_id["A-S4"]["builds_on"], ["A-S2"])
+        self.assertEqual(by_id["A-S5"]["local"], "S2")
+        self.assertEqual(by_id["A-S5"]["builds_on"], [])
+        self.assertNotIn("A-S1", [i["id"] for i in self.items() if i["round"] == "2"])
+        self.assertEqual(by_id["A-PLAN2"]["text"],
+                         "Staff a second clerk for routine permits and publish the checklist.")
+        self.assertEqual(by_id["A-PLAN2"]["kind"], "plan")
+        self.seat(3, "A", SOLVE_FOLLOWUP_UNCHANGED)
+        code, out = self.ledger(3, "solve-followup")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("dangling:", out)
+        plans = [i["id"] for i in self.items() if i["seat"] == "A" and i["kind"] == "plan"]
+        self.assertEqual(plans, ["A-PLAN", "A-PLAN2"])
+        self.seat(4, "A", SOLVE_FOLLOWUP_REVISE)
+        code, out = self.ledger(4, "solve-followup")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("dangling:", out)
+        by_id = {i["id"]: i for i in self.items()}
+        self.assertIn("A-PLAN3", by_id)
+        self.assertEqual(by_id["A-PLAN3"]["kind"], "plan")
+        revised = [i for i in self.items() if i["round"] == "4" and i["local"] == "S1"]
+        self.assertEqual(len(revised), 1)
+        self.assertNotEqual(revised[0]["id"], "A-S4")
+        self.assertEqual(revised[0]["builds_on"], ["A-S4"])
+
+    def test_solve_followup_dangling_step(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        self.ledger(1, "solve-r1")
+        bad = SOLVE_FOLLOWUP.replace("A-S2: The ten-day", "A-S9: The ten-day")
+        self.seat(2, "A", bad)
+        code, out = self.ledger(2, "solve-followup")
+        self.assertEqual(code, 1)
+        self.assertIn("dangling: leg-1 round 2: A cites A-S9", out)
+
+    def test_solve_replaces_unknown_step_is_dangling(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.ledger(1, "solve-r1")
+        bad = SOLVE_FOLLOWUP.replace("[replaces: A-S2]", "[replaces: A-S9]")
+        bad = bad.replace("B-PLAN", "A-PLAN").replace("B-S2", "A-S2")
+        self.seat(2, "A", bad)
+        code, out = self.ledger(2, "solve-followup")
+        self.assertEqual(code, 1, out)
+        self.assertIn("dangling: leg-1 round 2: A cites A-S9", out)
 
     def test_rerun_after_force_ignores_archived_versions(self):
         self.seat(1, "A", BRAINSTORM_R1)

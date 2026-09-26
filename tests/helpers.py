@@ -79,3 +79,95 @@ WILDCARD KEEP: A-WILDCARD — Risky but could change habits.
 
 DROP: A-I4 — Late loans shift the problem to staff.
 """
+
+# Subject is fixed: a municipal permit queue. No names or real organisations.
+
+SOLVE_R1 = """PROBLEM: A municipal permit queue takes eight weeks, and solved means a routine permit is decided within two weeks.
+DIAGNOSIS: One shared review desk holds every permit [assumption].
+APPROACH: Decide routine permits on a short checklist away from that desk.
+STEPS:
+S1 Sort each permit into routine or exception on arrival.
+S2 Decide routine permits from a fixed checklist within ten days.
+S3 Send exceptions to the shared desk with a written reason.
+RISKS:
+R1 The checklist misses a safety issue.
+TEST: Median routine permits are decided within two weeks for a month.
+RESULT: none
+CRUX: Whether most permits are routine.
+QUESTION FOR THE USER: What share of permits are routine?
+"""
+
+SOLVE_R1_RESULT = """PROBLEM: A municipal permit queue takes eight weeks, and solved means a routine permit is decided within two weeks.
+DIAGNOSIS: Applicants arrive missing the same three facts [assumption].
+APPROACH: Publish the checklist and refuse incomplete applications the same day.
+STEPS:
+S1 Publish the checklist where people apply.
+S2 Return incomplete applications the day they arrive.
+S3 Decide complete routine permits within ten days.
+RISKS:
+R1 Applicants cannot find the checklist.
+R2 Staff still review incomplete files out of habit.
+TEST: A month of routine permits shows a median under two weeks.
+RESULT: Nine of ten routine permits in a two-week sample were decided within ten days, counted from the work file.
+CRUX: Whether applicants will use the checklist.
+QUESTION FOR THE USER: none
+"""
+
+SOLVE_FOLLOWUP = """HOLES:
+A-S2: The ten-day checklist still needs the same scarce reviewer.
+B-PLAN: Publishing the checklist does not add anyone to decide permits.
+BORROWS:
+A-DIAGNOSIS: Keep the shared-desk cause and staff a second clerk for routine permits.
+CHANGED STEPS:
+S1 [replaces: A-S2] Decide routine permits on a checklist staffed by a second clerk.
+S2 [replaces: new] Publish the checklist so applicants arrive with complete files.
+PLAN: changed — Staff a second clerk for routine permits and publish the checklist.
+BECAUSE: B-S2 showed the checklist still depended on one reviewer.
+RESULT CHECKS: none
+CRUX: Whether a second clerk is available.
+STATUS: continue
+QUESTION FOR THE USER: none
+"""
+
+SOLVE_FOLLOWUP_UNCHANGED = """HOLES:
+A-PLAN2: Funding for the second clerk is not settled.
+BORROWS:
+none
+CHANGED STEPS:
+none
+PLAN: unchanged — The second clerk and the published checklist still stand.
+BECAUSE: A-PLAN2 does not show the checklist itself is wrong.
+RESULT CHECKS: none
+CRUX: Whether a second clerk can be funded.
+STATUS: nothing new
+QUESTION FOR THE USER: none
+"""
+
+SOLVE_FOLLOWUP_REVISE = """HOLES:
+A-PLAN2: The routine step still needs weekday cover.
+BORROWS:
+none
+CHANGED STEPS:
+S1 [replaces: A-S4] Staff the checklist with two clerks on weekdays.
+PLAN: changed
+BECAUSE: A-PLAN2 showed the second clerk belongs in the routine step.
+RESULT CHECKS: none
+CRUX: Whether weekday staffing is enough.
+STATUS: continue
+QUESTION FOR THE USER: none
+"""
+
+SOLVE_FOLLOWUP_B = """HOLES:
+B-S2: Same-day returns still leave the decision to one desk.
+BORROWS:
+A-PLAN: Take the split between routine permits and exceptions.
+CHANGED STEPS:
+S1 [replaces: B-S2] Return incomplete files and book a routine slot the same day.
+S2 [replaces: new] Count median decision time every Friday.
+PLAN: changed — Book a routine slot when an incomplete file is returned.
+BECAUSE: A-S2 showed one desk cannot clear the routine pile.
+RESULT CHECKS: none
+CRUX: Whether a same-day slot is real capacity.
+STATUS: continue
+QUESTION FOR THE USER: none
+"""

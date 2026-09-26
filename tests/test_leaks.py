@@ -59,6 +59,18 @@ class SessionLeaksTest(unittest.TestCase):
         self.write("transcript.md", "B Alternative GPT-5.5\n")
         self.assertEqual(self.leaks()[0], 0)
 
+    def test_work_file_is_scanned(self):
+        self.write("brief.md", "Seat A uses claude-sonnet-5.\n")
+        self.write("transcript.md", "Seat B uses gpt-5.5.\n")
+        self.write("leg-1/work/A-r1.md", "Counted ten routine permits.\n")
+        self.assertEqual(self.leaks(), (0, "ok: no leaks\n"))
+        self.write("leg-1/work/A-r1.md", "Checked with claude-sonnet-5.\n")
+        code, out = self.leaks()
+        self.assertEqual(code, 1)
+        self.assertIn("leg-1/work/A-r1.md:1: claude-sonnet-5", out)
+        self.assertNotIn("brief.md", out)
+        self.assertNotIn("transcript.md", out)
+
     def test_explicit_file_is_scanned(self):
         path = self.write("prompts/r2-A.md", "Seat B runs on GPT-5.5.\n")
         code, out = self.leaks(str(path))

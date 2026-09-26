@@ -1,6 +1,6 @@
 # paseo-hive
 
-A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different models toward one of four goals: **critique** a claim, plan, text, or piece of code; **brainstorm** ideas; **decide** between options; or **explore** a problem space. Seats analyse independently, cross-examine each other anonymously, and occasionally put a sharp counter-question back to you. Instead of a single final report, the panel pauses at a **checkpoint**: your feedback — new information, a focus, a disagreement, even a goal switch — starts the next leg with the same live panel. It does not produce a manufactured consensus.
+A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different models toward one of five goals: **critique** a claim, plan, text, or piece of code; **brainstorm** ideas; **decide** between options; **solve** a concrete problem by comparing worked-out approaches; or **explore** a problem space. Seats analyse independently, cross-examine each other anonymously, and occasionally put a sharp counter-question back to you. Instead of a single final report, the panel pauses at a **checkpoint**: your feedback — new information, a focus, a disagreement, even a goal switch — starts the next leg with the same live panel. It does not produce a manufactured consensus.
 
 ## How it works
 
@@ -17,6 +17,7 @@ At the start you pick the goal (or let the moderator choose), and you are asked 
 /paseo-hive --goal brainstorm How could a public library attract more teenagers?
 /paseo-hive --goal decide --quick SQLite or Postgres for a single-user desktop app?
 /paseo-hive --goal explore --deep What would we need to know before moving a team to a four-day week?
+/paseo-hive --goal solve Our volunteer rota keeps collapsing in the summer; how do we fix it?
 /paseo-hive --auto --rounds 5 Should a neighbourhood association own its community garden or lease it?
 ```
 

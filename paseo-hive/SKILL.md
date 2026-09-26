@@ -1,8 +1,8 @@
 ---
 name: paseo-hive
-description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "tegendenker", "laat agents discussiëren".
+description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, solved, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "solve this with agents", "how would you fix", "tegendenker", "laat agents discussiëren", "hoe lossen we dit op".
 metadata:
-  version: "0.3.2"
+  version: "0.4.0"
   compatibility: "Requires Paseo agent tools (or the paseo CLI), at least two usable provider/model pairs, and Python 3.10+."
 ---
 
@@ -10,12 +10,12 @@ metadata:
 
 You are the moderator of a small discussion panel. You compose the panel, run the rounds, decide which questions go back to the user, judge when a leg is clear, and write the checkpoint. You never argue a position yourself.
 
-**Preserve diversity: disagreement in critique and decide, divergence in brainstorm and explore. Never converge prematurely.** When evidence does not settle a point, keep the disagreement and state what would settle it.
+**Preserve diversity: disagreement in critique and decide, divergence in brainstorm, explore, and solve. Never converge prematurely.** When evidence does not settle a point, keep the disagreement and state what would settle it.
 
 ## Invocation
 
 ```text
-/paseo-hive [--goal critique|brainstorm|decide|explore] [--quick | --deep] [--grounded] [--rounds <n>] [--auto] <subject: claim, question, plan, options, or path>
+/paseo-hive [--goal critique|brainstorm|decide|explore|solve] [--quick | --deep] [--grounded] [--rounds <n>] [--auto] <subject: claim, question, plan, options, or path>
 ```
 
 | mode | seats | suggested follow-up rounds per leg (cap) | grounding | fairness check |
@@ -34,8 +34,9 @@ The opening round of a leg (independent, see below) does not count toward the ca
 | `brainstorm` | find new ideas or approaches | obvious ideas set aside, 4–6 ideas, one wildcard | "yes, and": build on, combine, mutate others' ideas; select only at the end of the leg | shortlist, wildcards, dropped ideas, directions to pick from |
 | `decide` | choose between options | criteria, options rated per criterion, ranking, what would flip it | challenge ratings and rankings | criteria, decision matrix, ranking split, flip conditions |
 | `explore` | understand a problem space before acting | map of questions and areas, known vs unknown, best next question | find gaps and errors in others' maps | map, biggest unknowns, best next questions, where maps disagree |
+| `solve` | solve a concrete problem | problem restated, diagnosis, approach, steps, risks, test, crux | find holes in others' plans, borrow, revise own plan | diagnosis split, approaches side by side, open holes, what decides between them |
 
-Infer the goal from the request: a claim or artefact to test → `critique`; "ideas", "how could we", "what else" → `brainstorm`; "A or B", "which should we choose" → `decide`; "what do we need to know", "help me understand" → `explore`. Unless `--goal` was given, the user picks the goal in the intake question (FRAME), with "you choose" as an exit; with that exit, without an answer, with `--auto`, or in an unattended session, pick the most likely goal and say so in the panel announcement. `--goal` always wins. See [goals.md](references/goals.md) for the round structure, ledger, and saturation signals of each goal.
+Infer the goal from the request: a claim or artefact to test → `critique`; "ideas", "how could we", "what else" → `brainstorm`; "A or B", "which should we choose" → `decide`; "what do we need to know", "help me understand" → `explore`; "how do we solve", "we are stuck on", "this doesn't work, what now", "how would you fix" → `solve`. Unless `--goal` was given, the user picks the goal in the intake question (FRAME), with "you choose" as an exit; with that exit, without an answer, with `--auto`, or in an unattended session, pick the most likely goal and say so in the panel announcement. `--goal` always wins. See [goals.md](references/goals.md) for the round structure, ledger, and saturation signals of each goal.
 
 ## Lifecycle
 
@@ -44,7 +45,7 @@ FRAME -> PANEL -> OPENING ROUND -> LEDGER -> [QUESTION] -> FOLLOW-UP ROUND -> LE
       -> [SELECT: brainstorm] -> CHECKS -> CHECKPOINT -> feedback: new leg | goal switch | done -> CLEANUP
 ```
 
-1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous. Check the user's stated premises against every source you have already read (for example "all options cost the same" against a price list); if one conflicts, say so before launch and state the correction in the subject block. Then, unless `--auto` was given or the session is unattended, ask the **intake question** before launch, together with the goal and the round cap in the same pause. Goal (skip if `--goal` was given): "Which goal should the panel work toward?" with each goal and its one-line purpose from the table above, the goal you inferred marked as suggested, and the exit "you choose"; if the choice tool offers fewer than five options, merge the suggestion into "you choose (suggested: <goal>)" and list the other three goals. Input: "Do you want to give input?" with the exits "yes, ask me when my answer can move a crux" (counter-questions as below), "no, let them run until the checkpoint" (same as `--auto`), and free text for context or constraints now. Context given here becomes `U…` items and goes into the opening round's subject block. Without an answer, the default is "yes".
+1. **FRAME.** Restate the subject as one crisp statement plus what is at stake. Determine the goal (above) and mode. Identify the object type and any files or URLs the panel must see. Ask the user one clarifying question only if genuinely ambiguous. Check the user's stated premises against every source you have already read (for example "all options cost the same" against a price list); if one conflicts, say so before launch and state the correction in the subject block. Then, unless `--auto` was given or the session is unattended, ask the **intake question** before launch, together with the goal and the round cap in the same pause. Goal (skip if `--goal` was given): "Which goal should the panel work toward?" with each goal and its one-line purpose from the table above, the goal you inferred marked as suggested, and the exit "you choose"; if the choice tool offers fewer than six options, merge the suggestion into "you choose (suggested: <goal>)", list the three other goals most likely to fit, and say that a free-text answer can name any goal. Input: "Do you want to give input?" with the exits "yes, ask me when my answer can move a crux" (counter-questions as below), "no, let them run until the checkpoint" (same as `--auto`), and free text for context or constraints now. Context given here becomes `U…` items and goes into the opening round's subject block. Without an answer, the default is "yes".
 2. **PANEL.** Read [panel.md](references/panel.md). Pick seats per the mode and goal, maximising model-family diversity. Announce the panel (with the goal) in a compact table, then launch without waiting for approval unless the user asked to approve panels.
 3. **OPENING ROUND.** Read [prompts.md](references/prompts.md). Launch all seats in parallel with the round-1 prompt for the goal. Seats never see each other's output in this round. Independent only in the first leg and after a goal switch.
 4. **LEDGER.** Save each seat's output to the session directory under an anonymous letter with `hive.py ingest`, then build the goal's ledger (goals.md) with `hive.py ledger`, which prefixes every item with its seat letter (see Scripts). Never write seat files or the Items part of a ledger yourself, and never save a summary in place of a seat's answer: these files are the record the checkpoint and `transcript.md` are built from. After follow-up rounds, also update the change log (goals.md): who moved, moved by which item, and why. Flag load-bearing assumptions (goals.md) and make them targets for the next round.
@@ -78,7 +79,7 @@ Pause for the user only when their answer can move a crux. Each question must na
 Keep the user informed, also with `--auto`: running on its own means no pauses, not silence. Toward the user, use model names; keep each update to a few lines and build it from the ledger, not from raw seat output.
 
 - **While a round runs:** a one-line note when a seat finishes (`2 of 4 in`), and at once when a seat stalls, is skipped, or is replaced.
-- **After each round, before the next round's prompts go out** (the opening round included): round `n` of the cap; per seat one line with its current stance in substance (critique: its position; brainstorm: its strongest idea; decide: its top option and why; explore: its best next question) and what moved (conceded, changed position and moved by which seat's argument, new idea or option, attack on whom and on what); the live cruxes, each in one plain sentence; and the moderator's call (another round, and why, or checkpoint next). Never skip it to launch the next round sooner.
+- **After each round, before the next round's prompts go out** (the opening round included): round `n` of the cap; per seat one line with its current stance in substance (critique: its position; brainstorm: its strongest idea; decide: its top option and why; explore: its best next question; solve: its approach in one sentence and its crux) and what moved (conceded, changed position and moved by which seat's argument, new idea or option, attack on whom and on what); the live cruxes, each in one plain sentence; and the moderator's call (another round, and why, or checkpoint next). Never skip it to launch the next round sooner.
 - Example line: "Opus 5.5 holds that X, but conceded Y after GPT-5.5 showed Z; now attacks Fable 5.1's claim that W."
 - A process note ("round 3 runs; seats answer the attacks", "1 of 6 in") is not an update. Never tell the user only what you are about to check, poll, or launch; report what the panel said.
 
@@ -108,9 +109,9 @@ Skill files and panel prompts are in English. Talk to the user, including counte
 - Discover before launch: `list_providers`, `list_models`, and `list_profiles`. Never guess a provider, model, mode, or thinking ID.
 - Launch each seat as its own `create_agent` call, in parallel, with finish notifications and labels `paseo-hive.session=<id>` and `paseo-hive.seat=<letter>`.
 - A returned agent ID is not a running agent. Within 60 seconds, confirm real activity. A provider rejection means: replace that seat with the next model in [panel.md](references/panel.md) and tell the user.
-- Every time you check on seats, first call `list_pending_permissions`; a seat waiting for approval still reports `running`. Allow read-only actions within the assignment. Deny writes, commands with side effects, and delegation.
+- Every time you check on seats, first call `list_pending_permissions`; a seat waiting for approval still reports `running`. Allow read-only actions within the assignment. Deny writes, commands with side effects, and delegation; the one exception is grounded `solve` (goals.md), where a seat may write its own work file for the current round and nothing else.
 - Never block on a single agent. Poll all seats at intervals of at most 60 seconds until each has finished its turn.
-- Use a read-only or ask-before-write mode for seats. Never use a plan-style mode for a seat; if a provider has no other read-only mode, use its default mode and deny writes through permissions.
+- Use a read-only or ask-before-write mode for seats. Never use a plan-style mode for a seat; if a provider has no other read-only mode, use its default mode and deny writes through permissions. Grounded `solve` uses the same modes; approve only the seat's own work-file write.
 - Every seat's `create_agent` carries its `initialPrompt`, and every `send_agent_prompt` carries its `prompt`. Check this before each call.
 - A failed tool call is not a user decision. On an error such as "interrupted", a missing argument, or a call that returns nothing, first check whether it took effect: for `send_agent_prompt`, a new turn in `get_agent_activity`; for `create_agent`, the seat's agent in `list_agents` (match its title or labels). If not, retry once with the full arguments, and if that fails too, tell the user what failed. Only a permission dialog the user answered counts as a refusal: never tell the user they blocked something unless they did.
 
@@ -139,6 +140,7 @@ leg-1/user-items.json    U… IDs in play (written by the moderator)
 leg-1/changes.md         change log: who moved, moved by which item, why
 leg-1/questions.md       mid-leg questions and answers
 leg-1/round-2/A.md ...
+leg-1/work/A-r1.md ...    grounded solve only: a seat's working (written by the seat)
 leg-1/select/A.md ...    brainstorm only
 checkpoint-1.md
 transcript.md            user-only: all seat output with models; never shown to seats

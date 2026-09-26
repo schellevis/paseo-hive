@@ -70,6 +70,29 @@
       {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
       {"name": "QUESTION FOR THE USER", "kind": "line"}
     ]},
+    "solve-r1": {"limit": "mode", "fields": [
+      {"name": "PROBLEM", "kind": "line"},
+      {"name": "DIAGNOSIS", "kind": "line", "ledger_id": "DIAGNOSIS"},
+      {"name": "APPROACH", "kind": "line", "ledger_id": "PLAN"},
+      {"name": "STEPS", "kind": "items", "id": "S", "min": 3, "sequential": true, "max": 6, "sentences": 1},
+      {"name": "RISKS", "kind": "items", "id": "R", "min": 1, "sequential": true, "max": 3, "sentences": 1},
+      {"name": "TEST", "kind": "line"},
+      {"name": "RESULT", "kind": "line", "ledger_id": "RESULT"},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "solve-followup": {"limit": "mode", "fields": [
+      {"name": "HOLES", "kind": "refs"},
+      {"name": "BORROWS", "kind": "refs"},
+      {"name": "CHANGED STEPS", "kind": "items", "id": "S", "min": 0, "max": null, "sequential": true, "sentences": 1,
+       "tags": [{"key": "replaces", "refs": true}]},
+      {"name": "PLAN", "kind": "choice", "values": ["changed", "unchanged"], "ledger_id": "PLAN"},
+      {"name": "BECAUSE", "kind": "line", "refs": true},
+      {"name": "RESULT CHECKS", "kind": "block", "refs": true},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
     "select": {"limit": "select", "fields": [
       {"name": "SHORTLIST", "kind": "block", "refs": true},
       {"name": "WILDCARD KEEP", "kind": "line", "refs": true},

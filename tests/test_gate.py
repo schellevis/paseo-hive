@@ -3,7 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import CRITIQUE_FOLLOWUP, CRITIQUE_R1, run
+from helpers import (CRITIQUE_FOLLOWUP, CRITIQUE_R1, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_B,
+                     SOLVE_R1, SOLVE_R1_RESULT, run)
 
 SEATS = {"session": "20260101-0900-test", "goal": "critique", "mode": "standard", "seats": [
     {"letter": "A", "role": "Skeptic", "provider": "claude", "model": "claude-sonnet-5",
@@ -178,6 +179,51 @@ class GateTest(unittest.TestCase):
         code, out = self.gate(1)
         self.assertEqual(code, 1)
         self.assertIn("leak: leg-1/ledger-1.md", out)
+
+    def test_clean_work_file_passes_gate(self):
+        self.round_one()
+        path = self.session / "leg-1/work/A-r1.md"
+        path.parent.mkdir(parents=True)
+        path.write_text("Counted ten routine permits.\n", encoding="utf-8")
+        self.assertEqual(self.gate(1)[0], 0)
+        path.write_text("Checked with claude-sonnet-5.\n", encoding="utf-8")
+        code, out = self.gate(1)
+        self.assertEqual(code, 1)
+        self.assertIn("leak: leg-1/work/A-r1.md", out)
+
+    def _solve_seats(self):
+        seats = json.loads(json.dumps(SEATS))
+        seats["goal"] = "solve"
+        (self.session / "seats.json").write_text(json.dumps(seats), encoding="utf-8")
+
+    def test_solve_round_passes_and_followup_needs_change_log(self):
+        self._solve_seats()
+        self.seat(1, "A", SOLVE_R1, fmt="solve-r1")
+        self.seat(1, "B", SOLVE_R1_RESULT, fmt="solve-r1")
+        self.assertEqual(self.ledger(1, "solve-r1")[0], 0)
+        code, out = self.gate(1)
+        self.assertEqual(code, 0, out)
+        self.seat(2, "A", SOLVE_FOLLOWUP, fmt="solve-followup")
+        self.seat(2, "B", SOLVE_FOLLOWUP_B, fmt="solve-followup")
+        self.assertEqual(self.ledger(2, "solve-followup")[0], 0)
+        code, out = self.gate(2)
+        self.assertEqual(code, 1)
+        self.assertIn("missing: no 'Round 2' entry in leg-1/changes.md", out)
+
+    def test_solve_followup_unknown_result_is_dangling(self):
+        self._solve_seats()
+        self.seat(1, "A", SOLVE_R1, fmt="solve-r1")
+        self.seat(1, "B", SOLVE_R1_RESULT, fmt="solve-r1")
+        self.ledger(1, "solve-r1")
+        cited = SOLVE_FOLLOWUP.replace(
+            "RESULT CHECKS: none", "RESULT CHECKS: C-RESULT: not checked — no such result")
+        self.seat(2, "A", cited, fmt="solve-followup", code=1)
+        self.seat(2, "B", SOLVE_FOLLOWUP_B, fmt="solve-followup")
+        self.ledger(2, "solve-followup")
+        (self.session / "leg-1/changes.md").write_text("Round 2: A changed.\n", encoding="utf-8")
+        code, out = self.gate(2)
+        self.assertEqual(code, 1)
+        self.assertIn("dangling: leg-1 round 2: A cites C-RESULT", out)
 
     def test_missing_seats_json_exits_2(self):
         (self.session / "seats.json").unlink()

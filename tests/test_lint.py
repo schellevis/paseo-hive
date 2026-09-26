@@ -37,11 +37,11 @@ class LintTest(unittest.TestCase):
 
     def test_status_count(self):
         self.edit("paseo-hive/references/prompts.md", "\nSTATUS: continue | nothing new", "\nSTATE: continue")
-        self.assertIn("prompts.md has 3 STATUS lines (want 4)", hive.lint(self.root))
+        self.assertIn("prompts.md has 4 STATUS lines (want 5)", hive.lint(self.root))
 
     def test_heading_count(self):
         self.edit("paseo-hive/references/goals.md", "### Minimum engagement", "### Min engagement")
-        self.assertIn("goals.md has 3 '### Minimum engagement' headings (want 4)", hive.lint(self.root))
+        self.assertIn("goals.md has 4 '### Minimum engagement' headings (want 5)", hive.lint(self.root))
 
     def test_verbatim_sentence(self):
         self.edit("paseo-hive/SKILL.md", "Stop when another round cannot settle anything.", "Stop when done.")

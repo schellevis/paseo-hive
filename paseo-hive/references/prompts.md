@@ -27,6 +27,9 @@ Rules:
 `{GROUNDING_RULE}` is one of:
 - off: "Do not use tools. Reason from what is given and mark claims that need checking as [assumption]."
 - on: "You may read the listed files and search the web. Tag each claim [source: <file or URL>] or [assumption]. Use at most {TOOL_BUDGET} tool calls."
+- grounded solve: the "on" text plus "Carry your solution out. You may write your working to {WORK_FILE} (at most 150 lines); this is the one exception to the rule against editing files. Write no other file and run only commands without side effects."
+
+In plan-only solve, use the off or on variant as usual and tell seats to answer `RESULT: none`.
 
 ## Round-1 formats
 
@@ -77,6 +80,25 @@ BEST NEXT QUESTION: <the single question most worth answering next, and how to a
 QUESTION FOR THE USER: <or "none">
 ```
 
+solve:
+```text
+PROBLEM: <the problem in one sentence, and what counts as solved>
+DIAGNOSIS: <the cause or causes, each tagged [source: ...] or [assumption]>
+APPROACH: <the core idea in one or two sentences>
+STEPS:
+S1 <step: max one sentence>
+S2 ...
+(3-6 steps)
+RISKS:
+R1 <where this approach can fail: max one sentence>
+R2 ...
+(1-3 risks)
+TEST: <the observable sign, after the fact, that it worked>
+RESULT: <grounded solve: the outcome and how you checked it | otherwise "none">
+CRUX: <the one thing the whole approach rests on>
+QUESTION FOR THE USER: <or "none">
+```
+
 ## Shared follow-up header
 
 ```text
@@ -89,6 +111,7 @@ Ledger:
 Input from the user: {USER_ITEMS_OR_"none"}
 
 Your targets: {TARGET_IDS}
+{WORK_FILE_RULE}
 {GOAL_INSTRUCTION}
 
 Answer in at most {WORD_LIMIT} words, in exactly this format:
@@ -99,8 +122,11 @@ Answer in at most {WORD_LIMIT} words, in exactly this format:
 - brainstorm: "Build on your targets: combine, extend, mutate, or transplant them. Do not criticise any idea in this round."
 - decide: "Challenge the ratings and rankings in your targets; concede where they are right. Address every user item."
 - explore: "Probe your targets for gaps, errors, and overstatements, and add what the maps miss."
+- solve: "Find the holes in your targets: which step fails, which cause is missing, which risk is overlooked. Borrow what is better than yours and say where it goes in your plan. Keep your approach distinct unless an argument moved you. Address every user item."
 
-Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat. Different seats get different targets where possible. User items (`U…`) are always in scope for every seat. A seat's own load-bearing assumptions (goals.md) are among its targets whenever grounding is on.
+Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat; solve — 1–2 other seats' plans, preferably from a different angle, pointed at their crux steps (`A-S…`) and at diagnoses that differ from the seat's own (`A-DIAGNOSIS`); in grounded solve also one other seat's `RESULT`. Different seats get different targets where possible. User items (`U…`) are always in scope for every seat. A seat's own load-bearing assumptions (goals.md) are among its targets whenever grounding is on.
+
+`{WORK_FILE_RULE}` is empty except in grounded solve, where it reads: "Grounded solve: this round's work file is {WORK_FILE} (at most 150 lines), the only file you may write; run only commands without side effects. Check the RESULT in your targets against its author's latest work file." `{WORK_FILE}` is `leg-<n>/work/<LETTER>-r<r>.md` for the current round.
 
 ## Follow-up formats
 
@@ -150,6 +176,24 @@ ADDITIONS:
 Q<n> <new question or area>: <why it matters>
 BEST NEXT QUESTION: changed | unchanged — <question>
 BECAUSE: <changed: the item id that moved you, and what it showed | unchanged: "none">
+STATUS: continue | nothing new
+QUESTION FOR THE USER: <or "none">
+```
+
+solve:
+```text
+HOLES:
+<item id>: <why this step fails, or which cause or risk is missing>
+BORROWS:
+<item id>: <what you take and where it goes in your plan, or "none">
+CHANGED STEPS:
+S1 [replaces: <step id> | new] <the step: max one sentence>
+S2 ...
+(or "none")
+PLAN: changed | unchanged — <your approach now, one sentence>
+BECAUSE: <changed: the item id that moved you, and what it showed that you had missed or got wrong | unchanged: the strongest hole found in your plan and why it does not hold>
+RESULT CHECKS: <grounded solve: <seat letter>-RESULT: reproduced | refuted | not checked — how | otherwise "none">
+CRUX: <the single point the approaches now split on>
 STATUS: continue | nothing new
 QUESTION FOR THE USER: <or "none">
 ```

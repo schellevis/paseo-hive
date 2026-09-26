@@ -7,7 +7,7 @@ from helpers import ROOT, hive, run
 FORMAT_IDS = [
     "brainstorm-followup", "brainstorm-r1", "critique-followup", "critique-r1",
     "decide-followup", "decide-r1", "explore-followup", "explore-r1",
-    "fairness", "select",
+    "fairness", "select", "solve-followup", "solve-r1",
 ]
 
 
@@ -26,6 +26,11 @@ class FormatsTest(unittest.TestCase):
         changed = self.prompts.replace("WEAKEST ASSUMPTION:", "WEAK SPOT:", 1)
         fails = hive.format_drift(changed, self.formats)
         self.assertTrue(any(f.startswith("critique-r1:") for f in fails), fails)
+
+    def test_solve_field_drift_is_detected(self):
+        changed = self.prompts.replace("DIAGNOSIS:", "CAUSE:", 1)
+        fails = hive.format_drift(changed, self.formats)
+        self.assertTrue(any(f.startswith("solve-r1:") for f in fails), fails)
 
     def test_select_block_is_parsed(self):
         self.assertEqual(hive.prompt_formats(self.prompts)["select"],
