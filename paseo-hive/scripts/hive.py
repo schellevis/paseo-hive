@@ -492,6 +492,15 @@ def _answer_from(region: list[str], start: int, fmt: dict) -> str:
     return "\n".join(out) + "\n"
 
 
+def _in_thought(region: list[str], i: int) -> bool:
+    """Whether line i lies after a [Thought] marker with no later marker before it."""
+    for line in reversed(region[:i + 1]):
+        m = MARKER.match(line)
+        if m:
+            return m.group(1) == "Thought"
+    return False
+
+
 def extract_answer(log_text: str, fmt: dict) -> str | None:
     """The seat's answer from `paseo logs --filter text` output, or None."""
     lines = log_text.splitlines()
@@ -505,6 +514,10 @@ def extract_answer(log_text: str, fmt: dict) -> str | None:
     floor = max((i for i, l in enumerate(region) if PLACEHOLDER.search(l) and i < starts[-1]),
                 default=-1)
     starts = [s for s in starts if s > floor]
+    # Some providers log their thoughts after the final answer: a draft inside a
+    # [Thought] block counts only when no start lies outside one.
+    outside = [s for s in starts if not _in_thought(region, s)]
+    starts = outside or starts
     best = None
     for i in reversed(starts):
         while (i - 1 > floor and field_at(region[i - 1], names[:1])
@@ -639,13 +652,30 @@ def _suffix(base: str, taken: set[str]) -> str:
     return cand
 
 
+_CHOICE_DASH = re.compile(r"^\s*[—–-]\s*|\s[—–-](?:\s|$)")
+
+
+_CHOICE_HEAD = re.compile(r"\s*([^\s—–]*)(.*)", re.DOTALL)
+
+
+def _split_choice(text: str) -> tuple[str, str]:
+    """(chosen word, lowercased and without trailing punctuation; the rest of the text)."""
+    word, rest = _CHOICE_HEAD.match(text).groups()
+    return word.lower().rstrip(".,;:!"), rest
+
+
+def choice_word(text: str) -> str:
+    """The chosen value of a choice field, for example 'changed' from 'Changed. …'."""
+    return _split_choice(text)[0]
+
+
 def _after_choice_dash(rest: str) -> str:
-    """Text after the first dash (—, –, or -) in `rest`, or the whole rest if there is none."""
-    found = [(rest.find(d), len(d)) for d in ("—", "–", "-") if d in rest]
-    if not found:
-        return rest.strip()
-    index, length = min(found)
-    return rest[index + length:].strip()
+    """Text after the first free-standing dash (—, –, or -) in `rest`, or the whole rest.
+
+    A hyphen inside a word ("two-step") is not a separator.
+    """
+    m = _CHOICE_DASH.search(rest)
+    return (rest[m.end():] if m else rest).strip()
 
 
 def _ledger_line(spec: dict, field: dict) -> str | None:
@@ -656,8 +686,8 @@ def _ledger_line(spec: dict, field: dict) -> str | None:
     """
     raw = " ".join(field["lines"]).strip()
     if spec.get("kind") == "choice":
-        word, _, rest = raw.partition(" ")
-        if word.lower() != spec["values"][0].lower():
+        word, rest = _split_choice(raw)
+        if word != spec["values"][0].lower():
             return None
         return _after_choice_dash(rest)
     if raw and raw.strip('". ').lower() != "none":
@@ -778,9 +808,9 @@ def change_lines(answers: dict[str, str], fmt: dict) -> list[str]:
     out = []
     for seat in sorted(answers):
         fields = parse_answer(answers[seat], fmt)["fields"]
-        value = fields.get(choice, {}).get("first", "").split()
+        value = choice_word(fields.get(choice, {}).get("first", ""))
         because = sorted(set(ID_RE.findall(" ".join(fields.get("BECAUSE", {}).get("lines", [])))))
-        out.append(f"{seat}: {choice} {value[0] if value else '?'}; "
+        out.append(f"{seat}: {choice} {value or '?'}; "
                    f"BECAUSE {', '.join(because) or 'no id'}")
     return out
 

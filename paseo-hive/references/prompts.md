@@ -187,7 +187,7 @@ HOLES:
 BORROWS:
 <item id>: <what you take and where it goes in your plan, or "none">
 CHANGED STEPS:
-S1 [replaces: <step id> | new] <the step: max one sentence>
+S1 [replaces: <the ledger ID of your own step it replaces> | new] <the step: max one sentence>
 S2 ...
 (or "none")
 PLAN: changed | unchanged — <your approach now, one sentence>

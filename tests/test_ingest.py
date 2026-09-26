@@ -49,6 +49,20 @@ class ExtractTest(unittest.TestCase):
         self.assertTrue(ans.startswith("ATTACKS:\nA-C3: Real attack."), ans)
         self.assertIn("missing CRUX", hive.check_answer(ans, "critique-followup", F)["line"])
 
+    def test_draft_in_thought_after_answer_is_ignored(self):
+        # Some providers log the model's thoughts after its final answer; a formatted
+        # draft inside those thoughts must not replace the answer.
+        text = ("[User] Round 2.\n" + CRITIQUE_FOLLOWUP.replace("B-C2:", "B-C3:") +
+                "[Thought] **Drafting**\n" + CRITIQUE_FOLLOWUP)
+        ans = hive.extract_answer(text, fmt("critique-followup"))
+        self.assertTrue(ans.startswith("ATTACKS:\nB-C3:"), ans)
+        self.assertNotIn("[Thought]", ans)
+
+    def test_answer_only_inside_thought_is_still_found(self):
+        text = "[User] Round 2.\n[Thought] Thinking.\n" + CRITIQUE_FOLLOWUP
+        ans = hive.extract_answer(text, fmt("critique-followup"))
+        self.assertTrue(ans.startswith("ATTACKS:\nB-C2:"), ans)
+
     def test_no_answer_returns_none(self):
         self.assertIsNone(hive.extract_answer("[User] hello\nThinking aloud.\n", fmt("critique-r1")))
 

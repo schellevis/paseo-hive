@@ -265,6 +265,43 @@ class LedgerTest(unittest.TestCase):
         self.assertNotEqual(revised[0]["id"], "A-S4")
         self.assertEqual(revised[0]["builds_on"], ["A-S4"])
 
+    def test_solve_plan_choice_tolerates_case_and_punctuation(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        self.ledger(1, "solve-r1")
+        answer = SOLVE_FOLLOWUP.replace(
+            "PLAN: changed — Staff a second clerk for routine permits and publish the checklist.",
+            "PLAN: Changed. Staff a second clerk for routine permits.")
+        self.seat(2, "A", answer)
+        code, out = self.ledger(2, "solve-followup")
+        self.assertEqual(code, 0, out)
+        plans = [i for i in self.items() if i["id"] == "A-PLAN2"]
+        self.assertEqual(len(plans), 1, self.items())
+        self.assertEqual(plans[0]["text"], "Staff a second clerk for routine permits.")
+        self.assertIn("A: PLAN changed; BECAUSE B-S2", out)
+
+    def test_solve_plan_text_ignores_hyphens_inside_words(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        self.ledger(1, "solve-r1")
+        answer = SOLVE_FOLLOWUP.replace(
+            "PLAN: changed — Staff a second clerk",
+            "PLAN: changed, now two-step — Staff a second clerk")
+        self.seat(2, "A", answer)
+        self.ledger(2, "solve-followup")
+        plan = next(i for i in self.items() if i["id"] == "A-PLAN2")
+        self.assertTrue(plan["text"].startswith("Staff a second clerk"), plan["text"])
+
+    def test_solve_plan_dash_attached_to_choice(self):
+        self.seat(1, "A", SOLVE_R1)
+        self.seat(1, "B", SOLVE_R1_RESULT)
+        self.ledger(1, "solve-r1")
+        answer = SOLVE_FOLLOWUP.replace("PLAN: changed — Staff", "PLAN: changed—Staff")
+        self.seat(2, "A", answer)
+        self.ledger(2, "solve-followup")
+        plan = next(i for i in self.items() if i["id"] == "A-PLAN2")
+        self.assertTrue(plan["text"].startswith("Staff a second clerk"), plan["text"])
+
     def test_solve_followup_dangling_step(self):
         self.seat(1, "A", SOLVE_R1)
         self.seat(1, "B", SOLVE_R1_RESULT)

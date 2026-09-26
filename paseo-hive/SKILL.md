@@ -2,7 +2,7 @@
 name: paseo-hive
 description: Use when the user wants an idea, claim, plan, decision, text, or piece of code stress-tested, brainstormed, decided between, solved, or mapped out by a small panel of Paseo agents on different models that analyse it independently, cross-examine each other, and put sharp counter-questions back to the user. Triggers include "hive", "let agents debate", "devil's advocate", "red-team this", "brainstorm with agents", "help me decide between", "help me explore", "solve this with agents", "how would you fix", "tegendenker", "laat agents discussiëren", "hoe lossen we dit op".
 metadata:
-  version: "0.4.0"
+  version: "0.4.1"
   compatibility: "Requires Paseo agent tools (or the paseo CLI), at least two usable provider/model pairs, and Python 3.10+."
 ---
 
