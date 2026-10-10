@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from helpers import CRITIQUE_FOLLOWUP, FIXTURES, SOLVE_FOLLOWUP, SOLVE_R1, hive, run
+from helpers import (CRITIQUE_FOLLOWUP, DEBUG_FOLLOWUP, DEBUG_FOLLOWUP_B, DEBUG_R1,
+                     DEBUG_R1_RESULT, FIXTURES, SOLVE_FOLLOWUP, SOLVE_R1, hive, run)
 
 F = hive.load_formats()
 LOGS = FIXTURES / "logs"
@@ -65,6 +66,49 @@ class ExtractTest(unittest.TestCase):
 
     def test_no_answer_returns_none(self):
         self.assertIsNone(hive.extract_answer("[User] hello\nThinking aloud.\n", fmt("critique-r1")))
+
+    def test_debug_answers_are_cut_from_the_echoed_prompt(self):
+        r1_log = (
+            "[User] Round 1.\n"
+            "SYMPTOM: <the symptom in one sentence, and what counts as working>\n"
+            "HYPOTHESES:\nH1 [likely | possible | unlikely] <a cause: max two sentences>\n"
+            "LEADING: <H-number>, because <the evidence>\n"
+            "RESULT: <grounded debug: T-number: the outcome | otherwise \"none\">\n"
+            "QUESTION FOR THE USER: <or \"none\">\n"
+            + DEBUG_R1 +
+            "[Thought] draft of a different symptom.\n"
+        )
+        ans = hive.extract_answer(r1_log, fmt("debug-r1"))
+        self.assertTrue(ans.startswith("SYMPTOM: Choir attendance"), ans)
+        self.assertTrue(ans.rstrip().endswith("QUESTION FOR THE USER: Did the rehearsal start time change in the last two years?"), ans)
+        self.assertNotIn("<the symptom", ans)
+        self.assertNotIn("draft", ans)
+        self.assertEqual(hive.check_answer(ans, "debug-r1", F)["status"], "ok")
+        result_log = "[User] Round 1.\nSYMPTOM: <the symptom>\n" + DEBUG_R1_RESULT
+        ans = hive.extract_answer(result_log, fmt("debug-r1"))
+        self.assertTrue(ans.startswith("SYMPTOM: Attendance drops"), ans)
+        self.assertEqual(hive.check_answer(ans, "debug-r1", F)["status"], "ok")
+        follow_log = (
+            "[User] Round 2.\n"
+            "RULES OUT:\n<hypothesis id>: <evidence id or [source: ...]> — <why>\n"
+            "NEW HYPOTHESES:\nH1 [likely | possible | unlikely] <a cause: max two sentences>\n"
+            "LEADING: changed | unchanged — <H-number or hypothesis id>\n"
+            "QUESTION FOR THE USER: <or \"none\">\n"
+            + DEBUG_FOLLOWUP +
+            "[Thought] stop\n"
+        )
+        ans = hive.extract_answer(follow_log, fmt("debug-followup"))
+        self.assertTrue(ans.startswith("RULES OUT:\nA-H1:"), ans)
+        self.assertTrue(ans.rstrip().endswith("QUESTION FOR THE USER: none"), ans)
+        self.assertNotIn("<hypothesis id>", ans)
+        self.assertNotIn("[User]", ans)
+        res = hive.check_answer(ans, "debug-followup", F)
+        self.assertEqual(res["status"], "ok", res["line"])
+        self.assertIn("B-RESULT", res["refs"])
+        ans = hive.extract_answer("[User] Round 2.\n" + DEBUG_FOLLOWUP_B, fmt("debug-followup"))
+        res = hive.check_answer(ans, "debug-followup", F)
+        self.assertEqual(res["status"], "ok", res["line"])
+        self.assertIn("B-RESULT", res["refs"])
 
     def test_solve_answers_are_cut_from_the_echoed_prompt(self):
         r1_log = (

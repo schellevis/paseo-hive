@@ -3,7 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import (CRITIQUE_FOLLOWUP, CRITIQUE_R1, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_B,
+from helpers import (CRITIQUE_FOLLOWUP, CRITIQUE_R1, DEBUG_FOLLOWUP, DEBUG_FOLLOWUP_B,
+                     DEBUG_R1, DEBUG_R1_RESULT, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_B,
                      SOLVE_R1, SOLVE_R1_RESULT, run)
 
 SEATS = {"session": "20260101-0900-test", "goal": "critique", "mode": "standard", "seats": [
@@ -224,6 +225,25 @@ class GateTest(unittest.TestCase):
         code, out = self.gate(2)
         self.assertEqual(code, 1)
         self.assertIn("dangling: leg-1 round 2: A cites C-RESULT", out)
+
+    def test_debug_round_passes_and_followup_needs_change_log(self):
+        seats = json.loads(json.dumps(SEATS))
+        seats["goal"] = "debug"
+        (self.session / "seats.json").write_text(json.dumps(seats), encoding="utf-8")
+        self.seat(1, "A", DEBUG_R1, fmt="debug-r1")
+        self.seat(1, "B", DEBUG_R1_RESULT, fmt="debug-r1")
+        self.assertEqual(self.ledger(1, "debug-r1")[0], 0)
+        code, out = self.gate(1)
+        self.assertEqual(code, 0, out)
+        self.seat(2, "A", DEBUG_FOLLOWUP, fmt="debug-followup")
+        self.seat(2, "B", DEBUG_FOLLOWUP_B, fmt="debug-followup")
+        self.assertEqual(self.ledger(2, "debug-followup")[0], 0)
+        code, out = self.gate(2)
+        self.assertEqual(code, 1)
+        self.assertIn("missing: no 'Round 2' entry in leg-1/changes.md", out)
+        (self.session / "leg-1/changes.md").write_text("Round 2: A changed.\n", encoding="utf-8")
+        code, out = self.gate(2)
+        self.assertEqual(code, 0, out)
 
     def test_missing_seats_json_exits_2(self):
         (self.session / "seats.json").unlink()

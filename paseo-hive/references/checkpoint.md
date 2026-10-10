@@ -26,7 +26,7 @@ Held despite challenge: <one line per seat that did not move: the strongest chal
 <open questions only the user can answer>
 
 ## What next?
-Reply with any of: new information · a focus ("dig into X") · where you disagree · a goal switch ("critique idea B-I2", "decide between the top two", "decide between the plans") · add or replace a seat · done.
+Reply with any of: new information · a focus ("dig into X") · where you disagree · a goal switch ("critique idea B-I2", "decide between the top two", "decide between the plans", "solve the cause") · add or replace a seat · done.
 ```
 
 Below the checkpoint, **only in the message to the user and never in `checkpoint-<n>.md`**, the moderator appends the panel mapping:
@@ -52,3 +52,4 @@ Rule: `checkpoint-<n>.md` never contains role or model names, so seats (includin
 - decide: `## Criteria` (with any user weights), `## Decision matrix` (options × criteria, consensus rating, or a split shown as the seats' ratings separated by slashes, e.g. `++/+/--` for seats A/B/C), `## Ranking` (per seat; show the split), `## What would flip it`.
 - explore: `## Map` (area ID `M…`, area, known, unknown), `## Biggest unknowns`, `## Best next questions` (ranked, with how to answer), `## Where the maps disagree`.
 - solve: `## Diagnosis` (agreement and split), `## Approaches` (table: current plan ID, seat, core idea, crux, strongest hole, borrowed from, revised yes/no), `## Open holes` (weak spots nobody refuted), `## Combined plan` (only if the seats built one themselves; otherwise omit the section), `## What decides between them` (the fact or user choice that would tip it), `## Results` (grounded solve only: seat, outcome, checked by, reproduced or refuted).
+- debug: `## Most likely cause` (each seat's current leading hypothesis by ID with its evidence; if seats lead with different hypotheses, show the split), `## Hypotheses` (table: ID, seat, cause, status open | ruled out | supported, evidence), `## What would settle it` (the tests `A-T…` still to run that separate the standing hypotheses, and who can run them: the panel with grounding, or the user), `## Results` (grounded debug only: result ID, seat, test, outcome, checked by, reproduced | refuted | not checked), `## Next: solve the cause` (offer a solve leg on the most likely cause by its hypothesis ID, with the symptom and that cause as the subject; when the panel is split, offer one solve leg per standing leading hypothesis or a further debug leg with the settling test).

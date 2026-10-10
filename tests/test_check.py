@@ -3,8 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import (BRAINSTORM_R1, CRITIQUE_FOLLOWUP, CRITIQUE_R1, SELECT,
-                     SOLVE_FOLLOWUP, SOLVE_R1, hive, run)
+from helpers import (BRAINSTORM_R1, CRITIQUE_FOLLOWUP, CRITIQUE_R1, DEBUG_FOLLOWUP,
+                     DEBUG_FOLLOWUP_B, DEBUG_FOLLOWUP_MAX, DEBUG_R1, DEBUG_R1_MAX,
+                     DEBUG_R1_RESULT, SELECT, SOLVE_FOLLOWUP, SOLVE_R1, hive, run)
 
 F = hive.load_formats()
 
@@ -123,6 +124,86 @@ class CheckTest(unittest.TestCase):
         res = check(empty, "solve-followup")
         self.assertEqual(res["status"], "invalid")
         self.assertIn("S2:", res["line"])
+
+    def test_debug_r1_is_ok(self):
+        for text in (DEBUG_R1, DEBUG_R1_RESULT):
+            res = check(text, "debug-r1")
+            self.assertEqual(res["status"], "ok", res["line"])
+
+    def test_debug_hypothesis_bounds_and_tags(self):
+        bad = DEBUG_R1.replace("[likely]", "[probable]")
+        res = check(bad, "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("H2: [probable] not in likely|possible|unlikely", res["line"])
+        one = DEBUG_R1.replace("H2 [likely] Daylight saving makes the 19:00 start feel rushed after work. "
+                               "It explains why members still like rehearsals.\n", "")
+        res = check(one.replace("LEADING: H2", "LEADING: H1"), "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("HYPOTHESES: 1 items, expected 2-3", res["line"])
+        four = DEBUG_R1_MAX.replace("LEADING:", "H4 [possible] The oven door is opened too often. "
+                                    "Each opening drops the chamber temperature.\nLEADING:")
+        res = check(four, "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("HYPOTHESES: 4 items, expected 2-3", res["line"])
+
+    def test_debug_needs_a_test(self):
+        none = DEBUG_R1.replace(
+            "T1 Compare sign-ins for the two weeks around the clock change. "
+            "A step at that week supports H2 over H1.\n", "")
+        res = check(none, "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("TESTS: 0 items, expected 1-2", res["line"])
+
+    def test_debug_leading_must_name_an_item_of_the_answer(self):
+        res = check(DEBUG_R1.replace("LEADING: H2,", "LEADING: H3,"), "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("LEADING: H3 is not an item in this answer", res["line"])
+
+    def test_debug_result_must_name_a_test_of_the_answer(self):
+        res = check(DEBUG_R1_RESULT.replace("RESULT: T1:", "RESULT: T3:"), "debug-r1")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("RESULT: T3 is not an item in this answer", res["line"])
+
+    def test_debug_followup_is_ok_without_known_new_ids(self):
+        known = {"A-H1", "A-H2", "B-H1", "B-H2", "A-T1", "B-T1", "B-RESULT", "A-LEADING", "B-LEADING"}
+        res = check(DEBUG_FOLLOWUP, "debug-followup", known=known)
+        self.assertEqual(res["status"], "ok", res["line"])
+        self.assertEqual(res["unknown"], [])
+        self.assertIn("B-RESULT", res["refs"])
+        res = check(DEBUG_FOLLOWUP_B, "debug-followup", known=known)
+        self.assertEqual(res["status"], "ok", res["line"])
+        self.assertIn("B-RESULT", res["refs"])
+
+    def test_debug_followup_unknown_prefixed_id_is_invalid(self):
+        known = {"A-H1", "A-H2", "B-H1", "B-H2", "A-T1", "B-T1", "B-RESULT"}
+        res = check(DEBUG_FOLLOWUP.replace("A-H1: B-RESULT", "A-H9: B-RESULT"),
+                    "debug-followup", known=known)
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("unknown id A-H9", res["line"])
+
+    def test_debug_max_answers_are_neither_trim_nor_invalid(self):
+        for text, fmt_id in ((DEBUG_R1_MAX, "debug-r1"), (DEBUG_FOLLOWUP_MAX, "debug-followup")):
+            res = check(text, fmt_id, mode="standard")
+            self.assertIn(res["status"], ("ok", "note"), res["line"])
+            self.assertFalse(any("sentences" in p["message"] for p in res["problems"]), res["line"])
+
+    def test_debug_reference_boundaries(self):
+        res = check(DEBUG_FOLLOWUP.replace(
+            "H1 [likely] The handout and the clock change fall in the same week, and members blame "
+            "the new pieces. It explains both signals.", "none"), "debug-followup")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("LEADING: H1 is not an item in this answer", res["line"])
+        known = {"A-H1", "A-H2", "B-H1", "B-H2", "A-T1", "B-T1", "B-RESULT"}
+        res = check(DEBUG_FOLLOWUP_B.replace("unchanged — B-H1", "unchanged — A-H1"),
+                    "debug-followup", known=known)
+        self.assertEqual(res["status"], "ok", res["line"])
+        res = check(DEBUG_FOLLOWUP_B.replace("unchanged — B-H1", "unchanged — A-H9"),
+                    "debug-followup", known=known)
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("unknown id A-H9", res["line"])
+        res = check(DEBUG_FOLLOWUP_B.replace("RESULT: A-T1:", "RESULT: T3:"), "debug-followup")
+        self.assertEqual(res["status"], "invalid")
+        self.assertIn("RESULT: T3 is not an item in this answer", res["line"])
 
     def test_fairness(self):
         self.assertEqual(check("fair\n", "fairness")["status"], "ok")

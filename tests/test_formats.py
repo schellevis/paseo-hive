@@ -6,7 +6,7 @@ from helpers import ROOT, hive, run
 
 FORMAT_IDS = [
     "brainstorm-followup", "brainstorm-r1", "critique-followup", "critique-r1",
-    "decide-followup", "decide-r1", "explore-followup", "explore-r1",
+    "debug-followup", "debug-r1", "decide-followup", "decide-r1", "explore-followup", "explore-r1",
     "fairness", "select", "solve-followup", "solve-r1",
 ]
 
@@ -31,6 +31,21 @@ class FormatsTest(unittest.TestCase):
         changed = self.prompts.replace("DIAGNOSIS:", "CAUSE:", 1)
         fails = hive.format_drift(changed, self.formats)
         self.assertTrue(any(f.startswith("solve-r1:") for f in fails), fails)
+
+    def test_debug_field_drift_is_detected(self):
+        changed = self.prompts.replace("SYMPTOM:", "PROBLEM STATEMENT:", 1)
+        fails = hive.format_drift(changed, self.formats)
+        self.assertTrue(any(f.startswith("debug-r1:") for f in fails), fails)
+
+    def test_local_refs_validation(self):
+        def data(field):
+            return {"formats": {"x": {"limit": "mode", "fields": [field]}}, "word_limits": {"standard": 250}}
+        items = {"name": "HYPOTHESES", "kind": "items", "id": "H", "min": 1, "max": 2,
+                 "local_refs": "H"}
+        for field in ({"name": "LEADING", "kind": "line", "local_refs": "HH"}, items):
+            with self.assertRaises(hive.HiveError, msg=field):
+                hive.validate_formats(data(field), "x")
+        hive.validate_formats(data({"name": "LEADING", "kind": "line", "local_refs": "H"}), "x")
 
     def test_select_block_is_parsed(self):
         self.assertEqual(hive.prompt_formats(self.prompts)["select"],

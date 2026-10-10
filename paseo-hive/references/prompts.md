@@ -27,9 +27,9 @@ Rules:
 `{GROUNDING_RULE}` is one of:
 - off: "Do not use tools. Reason from what is given and mark claims that need checking as [assumption]."
 - on: "You may read the listed files and search the web. Tag each claim [source: <file or URL>] or [assumption]. Use at most {TOOL_BUDGET} tool calls."
-- grounded solve: the "on" text plus "Carry your solution out. You may write your working to {WORK_FILE} (at most 150 lines); this is the one exception to the rule against editing files. Write no other file and run only commands without side effects."
+- grounded solve or debug: the "on" text plus "Carry your solution out (solve) or run your tests (debug). You may write your working to {WORK_FILE} (at most 150 lines); this is the one exception to the rule against editing files. Write no other file and run only commands without side effects."
 
-In plan-only solve, use the off or on variant as usual and tell seats to answer `RESULT: none`.
+In plan-only solve and reasoning-only debug, use the off or on variant as usual and tell seats to answer `RESULT: none`.
 
 ## Round-1 formats
 
@@ -99,6 +99,24 @@ CRUX: <the one thing the whole approach rests on>
 QUESTION FOR THE USER: <or "none">
 ```
 
+debug:
+```text
+SYMPTOM: <what goes wrong, when, and what "working" would look like>
+KNOWN: <what is established, each item tagged [source: ...] or [assumption]>
+HYPOTHESES:
+H1 [likely|possible|unlikely] <the cause, and which known facts it explains: max two sentences>
+H2 ...
+(2-3 hypotheses)
+LEADING: <your most likely hypothesis, by its number here (H1), and why in one sentence>
+TESTS:
+T1 <a check or experiment, and which hypotheses it would confirm or rule out: max two sentences>
+T2 ...
+(1-2 tests)
+RESULT: <grounded debug: the test you ran, by its number here (T1), its outcome, and how you checked it | otherwise "none">
+CRUX: <the one fact that would most change your view>
+QUESTION FOR THE USER: <or "none">
+```
+
 ## Shared follow-up header
 
 ```text
@@ -123,10 +141,11 @@ Answer in at most {WORD_LIMIT} words, in exactly this format:
 - decide: "Challenge the ratings and rankings in your targets; concede where they are right. Address every user item."
 - explore: "Probe your targets for gaps, errors, and overstatements, and add what the maps miss."
 - solve: "Find the holes in your targets: which step fails, which cause is missing, which risk is overlooked. Borrow what is better than yours and say where it goes in your plan. Keep your approach distinct unless an argument moved you. Address every user item."
+- debug: "Rule out hypotheses in your targets only with evidence they cannot explain: a checked RESULT, a user item, or a fact you tag [source: …]. An assumption, an untested test, or shared doubt rules nothing out. Support hypotheses where you have evidence. Keep your leading hypothesis unless evidence moved you. Address every user item."
 
-Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat; solve — 1–2 other seats' plans, preferably from a different angle, pointed at their crux steps (`A-S…`) and at diagnoses that differ from the seat's own (`A-DIAGNOSIS`); in grounded solve also one other seat's `RESULT`. Different seats get different targets where possible. User items (`U…`) are always in scope for every seat. A seat's own load-bearing assumptions (goals.md) are among its targets whenever grounding is on.
+Targets: critique — 1–2 claims furthest from the seat's position; brainstorm — 2–3 ideas from other seats, preferably from different lenses; decide — the other seats' top choices and the ratings furthest from the seat's own; explore — 1–2 merged areas (`M…`) covered by only one seat; solve — 1–2 other seats' plans, preferably from a different angle, pointed at their crux steps (`A-S…`) and at diagnoses that differ from the seat's own (`A-DIAGNOSIS`); in grounded solve likewise; debug — 1–2 other seats' current leading hypotheses (their latest `A-LEADING…` entry and the `A-H…` it names), preferably from a different angle, plus standing hypotheses that no test yet separates; in grounded debug also one other seat's latest `RESULT`, only if one exists, named with the work file of the round that produced it (`B-RESULT (leg-1/work/B-r1.md)`). Different seats get different targets where possible. User items (`U…`) are always in scope for every seat. A seat's own load-bearing assumptions (goals.md) are among its targets whenever grounding is on.
 
-`{WORK_FILE_RULE}` is empty except in grounded solve, where it reads: "Grounded solve: this round's work file is {WORK_FILE} (at most 150 lines), the only file you may write; run only commands without side effects. Check the RESULT in your targets against its author's latest work file." `{WORK_FILE}` is `leg-<n>/work/<LETTER>-r<r>.md` for the current round.
+`{WORK_FILE_RULE}` is empty except in grounded solve and grounded debug, where it reads: "Grounded <goal>: this round's work file is {WORK_FILE} (at most 150 lines), the only file you may write; run only commands without side effects. Check each RESULT in your targets against the work file named with it." `{WORK_FILE}` is `leg-<n>/work/<LETTER>-r<r>.md` for the current round.
 
 ## Follow-up formats
 
@@ -198,6 +217,29 @@ STATUS: continue | nothing new
 QUESTION FOR THE USER: <or "none">
 ```
 
+debug:
+```text
+RULES OUT:
+<hypothesis id>: <the evidence: a RESULT or U id, or a fact tagged [source: ...]> — <why the hypothesis cannot explain it>
+(or "none")
+SUPPORTS:
+<hypothesis id>: <the evidence, cited the same way>
+(or "none")
+NEW HYPOTHESES:
+H1 [likely|possible|unlikely] <the cause, and which known facts it explains: max two sentences>
+(at most 1, or "none")
+TESTS:
+T1 <a check or experiment, and which hypotheses it would confirm or rule out: max two sentences>
+(at most 2, or "none"; a new hypothesis needs one)
+LEADING: changed | unchanged — <your most likely hypothesis: a ledger id (B-H1), or H1 for the new hypothesis above>
+BECAUSE: <changed: the item id that moved you, and what it showed that you had missed or got wrong | unchanged: the strongest challenge to your leading hypothesis (its item id) and why it does not hold>
+RESULT: <grounded debug: the test you ran this round (a ledger id such as A-T1, or T1 for a test above), its outcome, and how you checked it | otherwise "none">
+RESULT CHECKS: <grounded debug: <seat letter>-RESULT<n>: reproduced | refuted | not checked — how | otherwise "none">
+CRUX: <the hypotheses still standing apart, and the test that would separate them>
+STATUS: continue | nothing new
+QUESTION FOR THE USER: <or "none">
+```
+
 ## Brainstorm select prompt
 
 Lowest thinking level, 120 words:
@@ -236,6 +278,8 @@ The earlier discussion is context, not a constraint. Work alone in this round.
 ```
 followed by the new goal's round-1 format with the rules list of the shared round-1 header.
 
+When a debug leg hands over to solve (the user accepted the checkpoint's offer), `{NEW_SUBJECT}` is the original symptom plus the cause the panel settled on, with its hypothesis ID, and the prompt adds after "The earlier discussion is context, not a constraint.": "The cause found in the debug leg is your starting point; do not reopen the hypotheses it ruled out unless the user disputed them."
+
 ## Catch-up prompt
 
 New or replacement seat; the full shared round-1 header is used with this preamble inserted before "Subject:":
@@ -248,7 +292,7 @@ Then contribute independently in the format below; you will see the other seats'
 
 ## Fairness check
 
-Deep mode, lowest thinking level. It runs on the checkpoint draft before it is shown: each seat receives the draft's summary of its own position (or its ideas, ratings, or map contributions) and replies `fair` or `unfair: <what is misrepresented>`; the moderator fixes flagged misrepresentations.
+Deep mode, lowest thinking level. It runs on the checkpoint draft before it is shown: each seat receives the draft's summary of its own position (or its ideas, ratings, map contributions, plan, or hypotheses) and replies `fair` or `unfair: <what is misrepresented>`; the moderator fixes flagged misrepresentations.
 
 ```text
 Below is the moderator's draft summary of your contribution. Reply in one line: "fair" or "unfair: <what is misrepresented>".

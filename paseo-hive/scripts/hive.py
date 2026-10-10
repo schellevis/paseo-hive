@@ -26,6 +26,7 @@ FORMATS_PATH = SKILL_DIR / "references" / "formats.json"
 EXIT_OK, EXIT_ACTION, EXIT_ERROR = 0, 1, 2
 SEVERITY = {"ok": 0, "note": 1, "trim": 2, "blind?": 3, "invalid": 4}
 MODES = ("quick", "standard", "deep")
+GOALS = ("critique", "brainstorm", "decide", "explore", "solve", "debug")
 
 
 class HiveError(Exception):
@@ -84,6 +85,9 @@ def validate_formats(data, path) -> None:
             if not isinstance(f, dict) or not isinstance(f.get("name"), str) or f.get("kind") not in _FIELD_KINDS:
                 bad(f"format {fid}", f"field {f!r} needs a string name and a kind in {_FIELD_KINDS}")
             where = f"format {fid} field {f['name']}"
+            if "local_refs" in f and (f["kind"] not in ("line", "choice") or not (
+                    isinstance(f["local_refs"], str) and re.fullmatch(r"[A-Z]", f["local_refs"]))):
+                bad(where, "'local_refs' must be one capital letter on a line or choice field")
             if f["kind"] == "choice" and not (_is_str_list(f.get("values")) and f["values"]):
                 bad(where, "choice fields need a non-empty 'values' list of strings")
             if f["kind"] == "items":
@@ -145,7 +149,7 @@ def prompt_formats(text: str) -> dict[str, list[str]]:
             section, goal = line[3:].strip(), None
             continue
         if not in_block:
-            m = re.fullmatch(r"(critique|brainstorm|decide|explore|solve):", line.strip())
+            m = re.fullmatch(rf"({'|'.join(GOALS)}):", line.strip())
             if m:
                 goal = m.group(1)
             elif line.startswith("```"):
@@ -191,7 +195,7 @@ def format_drift(prompts_text: str, formats: dict) -> list[str]:
 _LEAD = re.compile(r"^[\s#*>\-]+")
 PLACEHOLDER = re.compile(r"<[a-z][^>]*>")
 MARKER = re.compile(r"^\[(User|Thought)\]")
-ID_RE = re.compile(r"\b(?:[A-Z]-(?:[A-Z]+\d+|WILDCARD|NEW\d*|DIAGNOSIS|PLAN|RESULT)|[OMU]\d+)\b")
+ID_RE = re.compile(r"\b(?:[A-Z]-(?:[A-Z]+\d+|WILDCARD|NEW\d*|DIAGNOSIS|PLAN|RESULT|LEADING)|[OMU]\d+)\b")
 M_LINE = re.compile(r"^\s*[-*]?\s*(M\d+)\b", re.MULTILINE)
 MOD_HEADER = "## Moderator"
 _TAG = re.compile(r"^\s*\[([^\]]*)\]")
@@ -365,6 +369,11 @@ def _result(problems, words, limit, refs, unknown) -> dict:
             "refs": sorted(set(refs)), "unknown": unknown}
 
 
+def _local_ref_re(letter: str) -> re.Pattern:
+    """Bare local numbers such as H1, not part of a prefixed id such as A-H1."""
+    return re.compile(rf"(?<![A-Z]-)\b{letter}\d+\b")
+
+
 def check_answer(text: str, fmt_id: str, formats: dict, mode: str = "standard",
                  known: set[str] | None = None) -> dict:
     """Check one seat answer against its format; see the spec for the rules."""
@@ -403,6 +412,19 @@ def check_answer(text: str, fmt_id: str, formats: dict, mode: str = "standard",
                 refs += ID_RE.findall(", ".join(item["builds_on"]))
         if kind == "refs" or spec.get("refs"):
             refs += ID_RE.findall(" ".join(field["lines"]))
+    local: dict[str, set[str]] = {}
+    for spec in fmt["fields"]:
+        if spec["kind"] == "items" and spec["name"] in parsed["fields"]:
+            found, _ = parse_items(parsed["fields"][spec["name"]]["lines"], spec)
+            local.setdefault(spec["id"], set()).update(i["local"] for i in found)
+    for spec in fmt["fields"]:
+        field = parsed["fields"].get(spec["name"])
+        if field is None or not spec.get("local_refs"):
+            continue
+        letter = spec["local_refs"]
+        for token in _local_ref_re(letter).findall(" ".join(field["lines"])):
+            if token not in local.get(letter, set()):
+                problems.append(("invalid", f"{spec['name']}: {token} is not an item in this answer"))
     unknown: list[str] = []
     if known is not None:
         unknown = sorted({r for r in refs if not ref_known(r, known)})
@@ -632,7 +654,7 @@ def cmd_ingest(args) -> int:
 
 # --- ledger -------------------------------------------------------------------
 
-CHOICE_FIELDS = ("POSITION", "RANKING", "BEST NEXT QUESTION", "PLAN")
+CHOICE_FIELDS = ("POSITION", "RANKING", "BEST NEXT QUESTION", "PLAN", "LEADING")
 
 
 def _renumber(base: str, taken: set[str]) -> str:
@@ -756,8 +778,14 @@ def build_items(answers: dict[str, str], rnd: str, fmt: dict, existing: list[dic
         else:
             ids[n] = _renumber(f"{seat}-{it['local']}", taken)
         taken.add(ids[n])
+    local_ids = {(seat, it["local"]): ids[n] for n, (seat, spec, it) in enumerate(entries)
+                 if spec["kind"] == "items" and spec.get("id") != "O"}
     out = []
     for n, (seat, spec, it) in enumerate(entries):
+        text = it["text"]
+        if spec.get("local_refs"):
+            text = _local_ref_re(spec["local_refs"]).sub(
+                lambda m: local_ids.get((seat, m.group(0)), m.group(0)), text)
         if spec.get("id") == "O":
             kind = "option" if it["new"] else "rating"
         elif spec.get("ledger_id"):
@@ -765,7 +793,7 @@ def build_items(answers: dict[str, str], rnd: str, fmt: dict, existing: list[dic
         else:
             kind = spec["name"].lower()
         out.append({"id": ids[n], "local": it["local"], "seat": seat, "round": rnd, "kind": kind,
-                    "tags": it["tags"], "text": it["text"], "builds_on": it["builds_on"]})
+                    "tags": it["tags"], "text": text, "builds_on": it["builds_on"]})
     return out
 
 
@@ -1050,7 +1078,7 @@ def cmd_gate(args) -> int:
 HEADINGS = ("Opening round", "Follow-up rounds", "Ledger", "Saturation signals",
             "Minimum engagement", "Typical user questions")
 VERBATIM = (
-    "Preserve diversity: disagreement in critique and decide, divergence in brainstorm, "
+    "Preserve diversity: disagreement in critique, decide, and debug, divergence in brainstorm, "
     "explore, and solve. Never converge prematurely.",
     "Stop when another round cannot settle anything.",
     "Skill files and panel prompts are in English.",
@@ -1074,12 +1102,12 @@ def lint(root: Path) -> list[str]:
         if not (skill_dir / link).exists():
             fails.append(f"SKILL.md links to missing {link}")
     status = sum(1 for l in prompts.splitlines() if l.startswith("STATUS: continue | nothing new"))
-    if status != 5:
-        fails.append(f"prompts.md has {status} STATUS lines (want 5)")
+    if status != len(GOALS):
+        fails.append(f"prompts.md has {status} STATUS lines (want {len(GOALS)})")
     for h in HEADINGS:
         count = sum(1 for l in goals.splitlines() if l.startswith(f"### {h}"))
-        if count != 5:
-            fails.append(f"goals.md has {count} '### {h}' headings (want 5)")
+        if count != len(GOALS):
+            fails.append(f"goals.md has {count} '### {h}' headings (want {len(GOALS)})")
     fails += format_drift(prompts, formats)
     rule = next((l for l in agents.splitlines() if "Keep field names and IDs identical" in l), "")
     all_fields = {f["name"] for fm in formats["formats"].values() for f in fm.get("fields", [])}

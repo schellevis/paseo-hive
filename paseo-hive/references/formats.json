@@ -93,6 +93,31 @@
       {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
       {"name": "QUESTION FOR THE USER", "kind": "line"}
     ]},
+    "debug-r1": {"limit": "mode", "fields": [
+      {"name": "SYMPTOM", "kind": "line"},
+      {"name": "KNOWN", "kind": "block"},
+      {"name": "HYPOTHESES", "kind": "items", "id": "H", "min": 2, "sequential": true, "max": 3, "sentences": 2,
+       "tags": [{"key": null, "values": ["likely", "possible", "unlikely"]}]},
+      {"name": "LEADING", "kind": "line", "ledger_id": "LEADING", "local_refs": "H"},
+      {"name": "TESTS", "kind": "items", "id": "T", "min": 1, "sequential": true, "max": 2, "sentences": 2},
+      {"name": "RESULT", "kind": "line", "ledger_id": "RESULT", "local_refs": "T"},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
+    "debug-followup": {"limit": "mode", "fields": [
+      {"name": "RULES OUT", "kind": "refs"},
+      {"name": "SUPPORTS", "kind": "refs"},
+      {"name": "NEW HYPOTHESES", "kind": "items", "id": "H", "min": 0, "max": 1, "sequential": true, "sentences": 2,
+       "tags": [{"key": null, "values": ["likely", "possible", "unlikely"]}]},
+      {"name": "TESTS", "kind": "items", "id": "T", "min": 0, "max": 2, "sequential": true, "sentences": 2},
+      {"name": "LEADING", "kind": "choice", "values": ["changed", "unchanged"], "ledger_id": "LEADING", "refs": true, "local_refs": "H"},
+      {"name": "BECAUSE", "kind": "line", "refs": true},
+      {"name": "RESULT", "kind": "line", "ledger_id": "RESULT", "local_refs": "T"},
+      {"name": "RESULT CHECKS", "kind": "block", "refs": true},
+      {"name": "CRUX", "kind": "line"},
+      {"name": "STATUS", "kind": "choice", "values": ["continue", "nothing new"]},
+      {"name": "QUESTION FOR THE USER", "kind": "line"}
+    ]},
     "select": {"limit": "select", "fields": [
       {"name": "SHORTLIST", "kind": "block", "refs": true},
       {"name": "WILDCARD KEEP", "kind": "line", "refs": true},

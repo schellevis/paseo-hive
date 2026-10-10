@@ -22,6 +22,7 @@ A seat is a role or lens plus a provider/model. Fill the roster from the domain 
 - **decide**: one seat per major stakeholder or criterion family, plus one "what option is missing?" seat.
 - **explore**: a mix of domain lenses plus one Evidence critic.
 - **solve**: every seat gets a different angle (below); no separate Skeptic, since every seat attacks the other plans in follow-ups.
+- **debug**: every seat gets a different angle (below); "Not what it looks like" is always one of them; no separate Skeptic, since every seat tests the other hypotheses in follow-ups.
 
 ## Brainstorm lens library
 
@@ -45,6 +46,16 @@ A seat is a role or lens plus a provider/model. Fill the roster from the domain 
 | Work around it | How do we make the problem harmless without solving it? |
 | Who solved this before | How have others, including in other fields, solved this? |
 
+## Debug angle library
+
+| angle | question it owns |
+|---|---|
+| What changed | What changed just before the problem started? |
+| Reproduce and narrow | Under exactly which conditions does it happen, and what is the smallest case that still shows it? |
+| Follow the trail | Where does the path from start to symptom first deviate from what should happen? |
+| Not what it looks like | What if the symptom misleads: the measurement, the report, or the expectation itself is wrong? |
+| The surroundings | What outside the thing itself (setup, data, people, timing) differs between when it works and when it fails? |
+
 ## Domain libraries (examples, adapt freely)
 
 - **Software architecture:** security, maintainability, performance, simplicity ("do we need this at all?"), operability.
@@ -60,7 +71,7 @@ With grounding on, seats may read the subject files and search the web when thei
 ## Model assignment
 
 1. Discover the usable provider/model pairs. Prefer pairs from different model families (Anthropic, OpenAI, Google, Z.ai/GLM, Mistral, Qwen, and so on) and different accounts when quota is tight.
-2. Put the most capable available model on the seat that attacks the subject hardest (critique) or owns the widest scope (other goals); in solve, usually Root cause; diversity matters more than raw capability for the other seats.
+2. Put the most capable available model on the seat that attacks the subject hardest (critique) or owns the widest scope (other goals); in solve, usually Root cause; in debug, usually Not what it looks like; diversity matters more than raw capability for the other seats.
 3. Respect the user's model preferences and any stated quota limits. Avoid a provider the user says is nearly exhausted.
 4. If only one model family is available, continue, and write "Limited diversity: all seats run on <family>" at the top of the checkpoint.
 5. Keep a fallback order per seat. A seat whose model is rejected at launch moves to its next fallback; never retry a rejected model in the same session.

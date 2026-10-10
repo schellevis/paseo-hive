@@ -1,11 +1,11 @@
 # paseo-hive
 
-A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different models toward one of five goals: **critique** a claim, plan, text, or piece of code; **brainstorm** ideas; **decide** between options; **solve** a concrete problem by comparing worked-out approaches; or **explore** a problem space. Seats analyse independently, cross-examine each other anonymously, and occasionally put a sharp counter-question back to you. Instead of a single final report, the panel pauses at a **checkpoint**: your feedback — new information, a focus, a disagreement, even a goal switch — starts the next leg with the same live panel. It does not produce a manufactured consensus.
+A [Paseo](https://paseo.sh) skill that runs a small panel of agents on different models toward one of six goals: **critique** a claim, plan, text, or piece of code; **brainstorm** ideas; **decide** between options; **debug** a problem by testing competing explanations for its cause; **solve** a concrete problem by comparing worked-out approaches; or **explore** a problem space. Seats analyse independently, cross-examine each other anonymously, and occasionally put a sharp counter-question back to you. Instead of a single final report, the panel pauses at a **checkpoint**: your feedback — new information, a focus, a disagreement, even a goal switch — starts the next leg with the same live panel. It does not produce a manufactured consensus.
 
 ## How it works
 
 - an independent opening round, where seats never see each other's work;
-- anonymous follow-up rounds, where seats attack, build on, challenge, or probe each other's contributions;
+- anonymous follow-up rounds, where seats attack, build on, challenge, probe, or rule out each other's contributions;
 - counter-questions, asked only when your answer can move something;
 - a checkpoint that shows where the panel stands and what is still open;
 - your feedback starts the next leg — same panel, possibly a new goal.
@@ -18,6 +18,7 @@ At the start you pick the goal (or let the moderator choose), and you are asked 
 /paseo-hive --goal decide --quick SQLite or Postgres for a single-user desktop app?
 /paseo-hive --goal explore --deep What would we need to know before moving a team to a four-day week?
 /paseo-hive --goal solve Our volunteer rota keeps collapsing in the summer; how do we fix it?
+/paseo-hive --goal debug Our community choir's attendance drops every spring even though members say they like the rehearsals.
 /paseo-hive --auto --rounds 5 Should a neighbourhood association own its community garden or lease it?
 ```
 

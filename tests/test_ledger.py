@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 
 from helpers import (BRAINSTORM_FOLLOWUP, BRAINSTORM_R1, CRITIQUE_FOLLOWUP,
-                     CRITIQUE_R1, DECIDE_R1, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_REVISE,
+                     CRITIQUE_R1, DEBUG_FOLLOWUP, DEBUG_FOLLOWUP_B, DEBUG_R1,
+                     DEBUG_R1_RESULT, DECIDE_R1, SOLVE_FOLLOWUP, SOLVE_FOLLOWUP_REVISE,
                      SOLVE_FOLLOWUP_UNCHANGED, SOLVE_R1, SOLVE_R1_RESULT, run)
 
 
@@ -264,6 +265,73 @@ class LedgerTest(unittest.TestCase):
         self.assertEqual(len(revised), 1)
         self.assertNotEqual(revised[0]["id"], "A-S4")
         self.assertEqual(revised[0]["builds_on"], ["A-S4"])
+
+    def debug_round_one(self):
+        self.seat(1, "A", DEBUG_R1)
+        self.seat(1, "B", DEBUG_R1_RESULT)
+        code, out = self.ledger(1, "debug-r1")
+        self.assertEqual(code, 0, out)
+
+    def test_debug_round_one_ledger(self):
+        self.debug_round_one()
+        by_id = {i["id"]: i for i in self.items()}
+        self.assertEqual(sorted(by_id),
+                         ["A-H1", "A-H2", "A-LEADING", "A-T1",
+                          "B-H1", "B-H2", "B-LEADING", "B-RESULT", "B-T1"])
+        self.assertTrue(by_id["A-LEADING"]["text"].startswith("A-H2"), by_id["A-LEADING"])
+        self.assertTrue(by_id["B-LEADING"]["text"].startswith("B-H1"), by_id["B-LEADING"])
+        self.assertTrue(by_id["B-RESULT"]["text"].startswith("B-T1:"), by_id["B-RESULT"])
+        self.assertEqual(by_id["A-LEADING"]["kind"], "leading")
+        self.assertEqual(by_id["B-RESULT"]["kind"], "result")
+        self.assertIn("A-LEADING", self.ledger_md())
+
+    def test_debug_followup_ids_and_rewriting(self):
+        self.debug_round_one()
+        self.seat(2, "A", DEBUG_FOLLOWUP)
+        self.seat(2, "B", DEBUG_FOLLOWUP_B)
+        code, out = self.ledger(2, "debug-followup")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("dangling:", out)
+        self.assertIn("A: LEADING changed; BECAUSE B-RESULT", out)
+        self.assertIn("B: LEADING unchanged; BECAUSE A-H2, B-RESULT", out)
+        round2 = {i["id"]: i for i in self.items() if i["round"] == "2"}
+        self.assertEqual(sorted(round2), ["A-H3", "A-LEADING2", "A-T2", "B-RESULT2"])
+        self.assertEqual(round2["A-H3"]["local"], "H1")
+        self.assertEqual(round2["A-T2"]["local"], "T1")
+        self.assertEqual(round2["A-LEADING2"]["text"], "A-H3")
+        self.assertTrue(round2["B-RESULT2"]["text"].startswith("A-T1:"), round2["B-RESULT2"])
+        self.assertNotIn("B-LEADING2", round2)
+        first = self.items()
+        code, out = self.ledger(2, "debug-followup")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.items(), first)
+
+    def test_debug_local_result_ref_rewritten_and_prefixed_ids_kept(self):
+        self.debug_round_one()
+        answer = DEBUG_FOLLOWUP.replace(
+            "RESULT: none", "RESULT: T1: five members named the pieces, unlike A-H1 and B-H1 predict.")
+        self.seat(2, "A", answer)
+        code, out = self.ledger(2, "debug-followup")
+        self.assertEqual(code, 0, out)
+        by_id = {i["id"]: i for i in self.items()}
+        self.assertEqual(by_id["A-RESULT"]["text"],
+                         "A-T2: five members named the pieces, unlike A-H1 and B-H1 predict.")
+
+    def test_debug_second_leg_does_not_reuse_ids(self):
+        self.debug_round_one()
+        path = self.session / "leg-2/round-1/A.md"
+        path.parent.mkdir(parents=True)
+        path.write_text(DEBUG_R1, encoding="utf-8")
+        code, out = run(["ledger", "--session", str(self.session), "--leg", "2", "--round", "1",
+                         "--format", "debug-r1"])
+        self.assertEqual(code, 0, out)
+        leg2 = json.loads((self.session / "leg-2/items.json").read_text(encoding="utf-8"))
+        by_local = {i["local"]: i for i in leg2}
+        self.assertNotEqual(by_local["H1"]["id"], "A-H1")
+        self.assertNotEqual(by_local["H2"]["id"], "A-H2")
+        self.assertNotEqual(by_local["T1"]["id"], "A-T1")
+        self.assertTrue(by_local["LEADING"]["text"].startswith(by_local["H2"]["id"]),
+                        by_local["LEADING"])
 
     def test_solve_plan_choice_tolerates_case_and_punctuation(self):
         self.seat(1, "A", SOLVE_R1)
